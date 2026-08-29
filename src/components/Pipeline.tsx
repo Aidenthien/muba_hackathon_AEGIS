@@ -22,7 +22,7 @@ const STEPS: {
   {
     n: "01",
     title: "Intercept",
-    body: "The AEGIS SDK sits inside the wallet. The instant a user clicks “Swap,” the pending Programmable Transaction Block is intercepted — before any signature exists.",
+    body: "One call from the dApp — aegis.analyze(tx) — hands the pending Programmable Transaction Block to the AEGIS extension. It is inspected while still unsigned, before the wallet is ever asked to open.",
     code: [
       [{ t: "> " }, { t: "ptb.captured", hl: true }],
       [{ t: "  sender: 0x7af3…c21e" }],
@@ -46,7 +46,7 @@ const STEPS: {
   {
     n: "03",
     title: "Analyze",
-    body: "A Move-specialized AI walks the object delta graph: ownership flips, hidden drains, capability leaks, malicious dynamic fields. Milliseconds, not minutes.",
+    body: "The agent reads the object delta, resolves every Move call against a registry of known Sui protocols, and compares the shape against attack patterns it has seen before. Out comes a risk score, the flags behind it, and the reasoning.",
     code: [
       [{ t: "> " }, { t: "model.inspect(delta)", hl: true }],
       [{ t: "  pattern: " }, { t: "OWNERSHIP_FLIP", hl: true }],
@@ -58,7 +58,7 @@ const STEPS: {
   {
     n: "04",
     title: "Verdict",
-    body: "The wallet renders the outcome in plain language before the user signs. No custody, no admin keys, no race against consensus — the attack simply never happens.",
+    body: "AEGIS renders the outcome in plain language and returns one of three verdicts: approve, caution, reject. On approve the transaction executes with gas sponsored, so the user never needed SUI to begin with. No custody, no admin keys, no race against consensus.",
     code: null,
   },
 ];
@@ -315,7 +315,7 @@ function WalletVerdictCard(props: Record<string, unknown>) {
                   AEGIS SECURITY ALERT
                 </p>
                 <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-danger/80">
-                  Verdict in 212ms
+                  Pre-signature verdict
                 </p>
               </div>
             </div>

@@ -16,13 +16,13 @@ const FEATURES = [
     icon: "≡",
   },
   {
-    title: "Object-Lineage Threat Graph",
-    body: "A purpose-built indexer that speaks Sui's object model natively: ownership flips, capability leaks, and dynamic-field traps mapped in real time.",
+    title: "Known-Protocol Registry",
+    body: "Every Move call is resolved against a registry of Sui protocols carrying audit status and risk rating. A call into an unverified package gets named as one, not silently trusted.",
     icon: "◎",
   },
   {
-    title: "Wallet-Native SDK",
-    body: "One integration for wallet teams: intercept, simulate, render verdict. Plain-language warnings your grandmother could act on.",
+    title: "One-Call dApp SDK",
+    body: "Import one object, call one method, branch on the result. aegis.analyze() never throws — every outcome, including “not installed”, comes back as a status you can handle.",
     icon: "▣",
   },
   {
@@ -31,8 +31,8 @@ const FEATURES = [
     icon: "✕",
   },
   {
-    title: "Compliance-Grade Audit Trail",
-    body: "Every simulation is logged and attestable. Institutions get the risk reporting layer regulators are already asking for.",
+    title: "Gasless by Design",
+    body: "zkLogin sign-in plus Enoki-sponsored gas means a user with no wallet and no SUI can transact — and still sees the verdict before they sign. Onboarding without a funding step.",
     icon: "§",
   },
 ];

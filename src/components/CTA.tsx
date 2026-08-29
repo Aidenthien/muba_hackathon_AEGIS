@@ -10,8 +10,8 @@ gsap.registerPlugin(ScrollTrigger);
 
 const METRICS = [
   { value: 3.8, suffix: "B", prefix: "$", decimals: 1, label: "Lost to Web3 exploits in 2025" },
-  { value: 212, suffix: "ms", prefix: "", decimals: 0, label: "Median AEGIS verdict latency" },
-  { value: 100, suffix: "%", prefix: "", decimals: 0, label: "Of attacks caught pre-signature" },
+  { value: 100, suffix: "%", prefix: "", decimals: 0, label: "Of transactions simulated pre-signature" },
+  { value: 0, suffix: " SUI", prefix: "", decimals: 0, label: "Gas paid by the end user" },
   { value: 0, suffix: "", prefix: "", decimals: 0, label: "Keys, funds or caps in custody" },
 ];
 

@@ -17,10 +17,10 @@ const HeroScene = dynamic(() => import("./three/HeroScene"), {
 });
 
 const STATS = [
-  { value: "~400ms", label: "Sui finality we respect" },
-  { value: "<250ms", label: "AI verdict latency" },
-  { value: "0", label: "Admin keys held" },
-  { value: "100%", label: "Checked pre-signature" },
+  { value: "~400ms", label: "Sui finality we never race" },
+  { value: "100%", label: "Transactions simulated first" },
+  { value: "0", label: "Keys, funds or caps held" },
+  { value: "0 SUI", label: "Gas paid by the user" },
 ];
 
 export default function Hero() {
@@ -121,7 +121,7 @@ export default function Hero() {
       >
         <p data-hero-kicker className="kicker mb-7 flex flex-wrap items-center justify-center gap-3">
           <span className="inline-block h-1.5 w-1.5 rotate-45 bg-aqua" />
-          <span data-hero-kicker-text>AI Risk &amp; Compliance Oracle — Built on Sui</span>
+          <span data-hero-kicker-text>Pre-Execution Security Oracle — Built on Sui</span>
           <span className="inline-block h-1.5 w-1.5 rotate-45 bg-aqua" />
         </p>
 
@@ -142,9 +142,10 @@ export default function Hero() {
           className="mx-auto mt-8 max-w-[58ch] text-base leading-relaxed text-pretty text-[#dbe7f4] [text-shadow:0_2px_18px_rgba(2,7,16,0.95),0_0_2px_rgba(2,7,16,0.9)] sm:text-lg sm:leading-8"
         >
           AEGIS is a pre-execution simulation oracle for Sui. Every transaction
-          is dry-run against live chain state and verified by AI in
-          milliseconds — inside the wallet, before your users ever sign.
-          No custody. No admin keys. No postmortems.
+          is dry-run against live chain state, risk-scored, and explained in
+          plain language before your users ever sign — with gas sponsored, so
+          they never need SUI to stay safe. No custody. No admin keys.
+          No postmortems.
         </p>
 
         {/* scroll cue — in flow, so it never collides with the stat bar */}

@@ -11,6 +11,7 @@ import { ConnectButton } from "@mysten/dapp-kit-react/ui";
 import { Transaction } from "@mysten/sui/transactions";
 import { isValidSuiAddress } from "@mysten/sui/utils";
 import { zkLoginEnabled } from "@/lib/dapp-kit";
+import { SponsorError, signAndExecuteSponsored } from "@/lib/sponsor";
 import { aegis, type AegisResult } from "@/lib/aegis-sdk";
 import InstallPrompt from "@/components/aegis/InstallPrompt";
 import { MIST_PER_SUI, SCENARIOS, formatBalanceChange, shortAddress } from "./scenarios";
@@ -68,10 +69,17 @@ export default function TransactionLab() {
   const [selected, setSelected] = useState<string>(SCENARIOS[0].id);
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("0.05");
+  // Every transaction goes through the Enoki sponsor (src/lib/sponsor.ts) so
+  // the user never pays gas. Falls back to wallet-paid gas only when the
+  // server has no sponsor key, which keeps the demo working unconfigured.
+  const [sponsorAvailable, setSponsorAvailable] = useState(false);
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [outcome, setOutcome] = useState<AegisResult | null>(null);
   const [rawPtb, setRawPtb] = useState<string | null>(null);
+  // How rawPtb was built — a sponsored payload has to be retried through the
+  // sponsor, not the wallet's own gas.
+  const [rawPtbSponsored, setRawPtbSponsored] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
   const [signError, setSignError] = useState<string | null>(null);
   const [digest, setDigest] = useState<string | null>(null);
@@ -105,6 +113,19 @@ export default function TransactionLab() {
       setExtensionVersion(provider?.version ?? null);
       setExtensionChecked(true);
     });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/sponsor")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setSponsorAvailable(Boolean(data.enabled));
+      })
+      .catch(() => {}); // no sponsor endpoint = wallet pays its own gas, nothing to say
     return () => {
       cancelled = true;
     };
@@ -176,6 +197,7 @@ export default function TransactionLab() {
   function reset() {
     setOutcome(null);
     setRawPtb(null);
+    setRawPtbSponsored(false);
     setBuildError(null);
     setSignError(null);
     setDigest(null);
@@ -188,23 +210,37 @@ export default function TransactionLab() {
   }
 
   /** Signs the exact payload AEGIS analyzed, not a freshly rebuilt one. */
-  async function execute(payload: string) {
+  async function execute(payload: string, sponsored: boolean) {
     setPhase("signing");
     setSignError(null);
     try {
       const tx = Transaction.from(payload);
-      const result = await dAppKit.signAndExecuteTransaction({ transaction: tx });
-      if (result.$kind === "FailedTransaction") {
-        throw new Error(
-          result.FailedTransaction.status.error?.message ?? "Transaction failed on-chain"
-        );
-      }
-      const txDigest = result.Transaction.digest;
+      // Sponsored runs go out through the server (gas comes from Enoki); the
+      // wallet still signs the same commands either way.
+      const txDigest = sponsored
+        ? (
+            await signAndExecuteSponsored({
+              transaction: tx,
+              sender: account!.address,
+              network,
+            })
+          ).digest
+        : await (async () => {
+            const result = await dAppKit.signAndExecuteTransaction({ transaction: tx });
+            if (result.$kind === "FailedTransaction") {
+              throw new Error(
+                result.FailedTransaction.status.error?.message ?? "Transaction failed on-chain"
+              );
+            }
+            return result.Transaction.digest;
+          })();
       await client.core.waitForTransaction({ digest: txDigest });
       setDigest(txDigest);
       void refreshBalance(); // reflect the balance the transfer just changed
     } catch (e) {
-      setSignError(describeSignError(e));
+      // Sponsor rejections already carry a precise, actionable message —
+      // don't launder them through the wallet-error translator.
+      setSignError(e instanceof SponsorError ? e.message : describeSignError(e));
     } finally {
       setPhase("settled");
     }
@@ -214,6 +250,10 @@ export default function TransactionLab() {
   async function runAegis() {
     if (!account) return;
     reset();
+
+    // Captured once: the payload AEGIS analyzes has to be the one we execute,
+    // so a late /api/sponsor probe must not change how it's submitted.
+    const sponsoredRun = sponsorAvailable && scenario.sponsorable;
 
     let payload: string;
     try {
@@ -226,7 +266,9 @@ export default function TransactionLab() {
         if (!Number.isFinite(sui) || sui <= 0) {
           throw new Error("Enter a positive SUI amount.");
         }
-        payload = await scenario.build(account.address, to || account.address, sui).toJSON();
+        payload = await scenario
+          .build(account.address, to || account.address, sui, { sponsored: sponsoredRun })
+          .toJSON();
       } else {
         payload = await scenario.build(account.address).toJSON();
       }
@@ -236,6 +278,7 @@ export default function TransactionLab() {
     }
 
     setRawPtb(payload);
+    setRawPtbSponsored(sponsoredRun);
     setPhase("awaiting");
 
     const result = await aegis.analyze({
@@ -254,7 +297,7 @@ export default function TransactionLab() {
     setOutcome(result);
 
     if (result.status === "approved" && scenario.executable) {
-      await execute(payload);
+      await execute(payload, sponsoredRun);
       return;
     }
     setPhase("settled");
@@ -408,6 +451,18 @@ export default function TransactionLab() {
                     />
                   </label>
                 </div>
+              )}
+
+              {/* Not a choice — sponsorship is always on when the server holds a
+                  key and the scenario avoids tx.gas (see Scenario.sponsorable).
+                  Stated rather than offered, so the missing gas cost isn't a
+                  surprise when the balance barely moves. */}
+              {sponsorAvailable && scenario.sponsorable && (
+                <p className="rounded-xl border border-sui/30 bg-sui/5 p-4 text-[11px] leading-relaxed text-mist">
+                  <span className="font-mono uppercase tracking-[0.2em] text-aqua">Gasless</span>
+                  {" — Enoki pays the gas from the app's sponsor pool. You still sign, and"}
+                  {" AEGIS still analyzes the transaction first."}
+                </p>
               )}
             </div>
 
@@ -572,7 +627,7 @@ export default function TransactionLab() {
                     <>
                       <p className="text-xs leading-relaxed text-danger">{signError}</p>
                       <button
-                        onClick={() => rawPtb && void execute(rawPtb)}
+                        onClick={() => rawPtb && void execute(rawPtb, rawPtbSponsored)}
                         className="mt-3 rounded-full border border-sui/50 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.2em] text-white transition-colors hover:border-aqua"
                       >
                         Retry signing

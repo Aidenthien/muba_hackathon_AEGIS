@@ -1,4 +1,4 @@
-import { Transaction } from "@mysten/sui/transactions";
+import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 
 /**
  * Demo scenarios for the AEGIS transaction lab. The Cetus and drain
@@ -25,18 +25,31 @@ export interface Scenario {
   blurb: string;
   /** false = multi-call or unverified scenario designed for agent risk scoring; true = baseline on-chain transfer */
   executable: boolean;
+  /** Whether this scenario can run gasless (i.e. never touches `tx.gas`). */
+  sponsorable: boolean;
   expected: "approve" | "caution" | "reject";
-  build: (sender: string, recipient?: string, amountSui?: number) => Transaction;
+  build: (
+    sender: string,
+    recipient?: string,
+    amountSui?: number,
+    options?: { sponsored?: boolean }
+  ) => Transaction;
 }
 
 export function buildTransfer(
   sender: string,
   recipient: string,
-  amountMist: bigint
+  amountMist: bigint,
+  { sponsored = false }: { sponsored?: boolean } = {}
 ): Transaction {
   const tx = new Transaction();
   tx.setSender(sender);
-  const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amountMist)]);
+  // Under sponsorship the gas coin belongs to the Enoki sponsor, not the user,
+  // so splitting `tx.gas` would move our SUI instead of theirs. coinWithBalance
+  // with useGasCoin: false sources the amount from coins the sender owns.
+  const coin = sponsored
+    ? tx.add(coinWithBalance({ balance: amountMist, useGasCoin: false }))
+    : tx.splitCoins(tx.gas, [tx.pure.u64(amountMist)])[0];
   tx.transferObjects([coin], tx.pure.address(recipient));
   return tx;
 }
@@ -47,11 +60,12 @@ export const SCENARIOS: Scenario[] = [
     label: "Custom SUI Transfer",
     blurb: "Specify target recipient address & SUI amount. Agent analyzes target wallet history and balance impact.",
     executable: true,
+    sponsorable: true,
     expected: "approve",
-    build: (sender, recipient, amountSui) => {
+    build: (sender, recipient, amountSui, options) => {
       const sui = amountSui && amountSui > 0 ? amountSui : 0.05;
       const amountMist = BigInt(Math.floor(sui * 1_000_000_000));
-      return buildTransfer(sender, recipient || sender, amountMist);
+      return buildTransfer(sender, recipient || sender, amountMist, options);
     },
   },
   {
@@ -59,6 +73,7 @@ export const SCENARIOS: Scenario[] = [
     label: "DeFi Swap · Cetus",
     blurb: "Swap SUI via Cetus router. Recognized audited protocol (Approve).",
     executable: false,
+    sponsorable: false,
     expected: "approve",
     build: (sender) => {
       const tx = new Transaction();
@@ -76,6 +91,7 @@ export const SCENARIOS: Scenario[] = [
     label: "Complex DeFi Chain",
     blurb: "Multi-step swap + lending + farming across Cetus, NAVI, and Bucket. Medium risk (Caution).",
     executable: false,
+    sponsorable: false,
     expected: "caution",
     build: (sender) => {
       const tx = new Transaction();
@@ -105,6 +121,7 @@ export const SCENARIOS: Scenario[] = [
     label: "Suspicious Drain",
     blurb: "Unverified contract call + object transfer + cap deletion shape. High risk (Reject).",
     executable: false,
+    sponsorable: false,
     expected: "reject",
     build: (sender) => {
       const tx = new Transaction();

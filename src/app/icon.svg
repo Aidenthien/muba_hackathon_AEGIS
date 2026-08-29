@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 132">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#cfe8ff"/>
+      <stop offset="0.55" stop-color="#4da2ff"/>
+      <stop offset="1" stop-color="#6ff7ff"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="url(#g)" stroke-linejoin="round" stroke-linecap="round">
+    <!-- outer shield -->
+    <path stroke-width="5" d="M60 4 L14 16 V56 Q14 92 60 126 Q106 92 106 56 V16 Z"/>
+    <!-- inner shield -->
+    <path stroke-width="4" transform="translate(60 65) scale(0.72) translate(-60 -65)" d="M60 4 L14 16 V56 Q14 92 60 126 Q106 92 106 56 V16 Z"/>
+    <!-- circuit traces -->
+    <path stroke-width="3" d="M39 48 v22 l11 11"/>
+    <circle cx="39" cy="40" r="4" stroke-width="3"/>
+    <path stroke-width="3" d="M81 84 v-22 l-11 -11"/>
+    <circle cx="81" cy="92" r="4" stroke-width="3"/>
+  </g>
+  <!-- glowing core shield -->
+  <path transform="translate(60 65) scale(0.3) translate(-60 -65)" d="M60 4 L14 16 V56 Q14 92 60 126 Q106 92 106 56 V16 Z" fill="#59d8f0" opacity="0.92"/>
+</svg>

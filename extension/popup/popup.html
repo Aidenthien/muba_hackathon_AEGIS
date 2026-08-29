@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AEGIS</title>
+    <script src="mode.js"></script>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img src="../icons/icon-32.png" alt="" class="brand-mark" />
+        <div class="brand-text">
+          <span class="brand-name">AEGIS</span>
+          <span class="brand-sub">Pre-Execution Oracle</span>
+        </div>
+      </div>
+      <span class="pill" id="network-pill" hidden>testnet</span>
+    </header>
+
+    <div class="origin-bar" id="origin-bar" hidden>
+      <span class="origin-icon" aria-hidden="true">⬦</span>
+      <span class="origin-host" id="origin-host">—</span>
+      <span class="origin-tag">requesting review</span>
+    </div>
+
+    <main class="body">
+      <!-- ── Opened from the toolbar with nothing pending ── -->
+      <section class="screen" id="screen-idle" hidden>
+        <div class="hero">
+          <img src="../icons/icon-128.png" alt="" class="hero-mark" />
+          <h1 class="hero-title">AEGIS is armed</h1>
+          <p class="hero-sub">
+            Any dApp that calls <code>aegis.analyze()</code> will open a review
+            here before your wallet ever opens.
+          </p>
+        </div>
+
+        <div class="card">
+          <label class="field-label" for="agent-url-idle">Agent server</label>
+          <input class="input" id="agent-url-idle" spellcheck="false" />
+          <p class="hint" id="agent-status-idle">Checking…</p>
+          <button class="btn btn-ghost btn-sm" id="save-url-idle">Save &amp; test</button>
+        </div>
+      </section>
+
+      <!-- ── Step 1: what you're about to authorize ── -->
+      <section class="screen" id="screen-review" hidden>
+        <p class="step-label">Step 1 — Review</p>
+        <h1 class="screen-title">A dApp wants a security review</h1>
+        <p class="screen-sub">
+          Nothing is signed yet. AEGIS will simulate this transaction against
+          live chain state before you decide.
+        </p>
+
+        <div class="card">
+          <div class="row">
+            <span class="row-key">From</span>
+            <span class="row-val mono" id="rv-sender" title="">—</span>
+          </div>
+          <div class="row">
+            <span class="row-key">Network</span>
+            <span class="row-val" id="rv-network">—</span>
+          </div>
+          <div class="row" id="rv-amount-row" hidden>
+            <span class="row-key">Value moved</span>
+            <span class="row-val strong" id="rv-amount">—</span>
+          </div>
+          <div class="row" id="rv-recipient-row" hidden>
+            <span class="row-key">To</span>
+            <span class="row-val mono" id="rv-recipient" title="">—</span>
+          </div>
+          <div class="row">
+            <span class="row-key">Commands</span>
+            <span class="row-val" id="rv-commands">—</span>
+          </div>
+        </div>
+
+        <div class="card" id="rv-calls-card" hidden>
+          <p class="card-label">Contract calls</p>
+          <ul class="calls" id="rv-calls"></ul>
+        </div>
+
+        <div class="card" id="rv-ops-card">
+          <p class="card-label">Operations</p>
+          <div class="chips" id="rv-ops"></div>
+        </div>
+
+        <p class="fineprint">
+          AEGIS never holds your keys. Approving here only returns a verdict to
+          the dApp — your wallet still asks you to sign.
+        </p>
+      </section>
+
+      <!-- ── Step 2: live agent execution ── -->
+      <section class="screen" id="screen-analyzing" hidden>
+        <p class="step-label">Step 2 — Simulating</p>
+        <h1 class="screen-title">
+          <span class="live-dot"></span>
+          Agent running
+        </h1>
+
+        <div class="thought" id="thought-box" hidden>
+          <p class="thought-label">
+            Agent thought
+            <span class="thought-src" id="thought-src" hidden></span>
+          </p>
+          <p class="thought-text" id="thought-text"></p>
+        </div>
+
+        <p class="card-label">Tool calls</p>
+        <ul class="tools" id="tool-list">
+          <li class="tool tool-waiting">
+            <span class="tool-spinner"></span>
+            <span class="tool-name">connecting to agent…</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ── Step 3: the verdict ── -->
+      <section class="screen" id="screen-verdict" hidden>
+        <div class="verdict" id="verdict-banner">
+          <div class="verdict-head">
+            <span class="verdict-title" id="verdict-title">—</span>
+            <span class="verdict-score" id="verdict-score">—</span>
+          </div>
+          <div class="score-track"><div class="score-fill" id="score-fill"></div></div>
+          <p class="verdict-text" id="verdict-explanation">—</p>
+        </div>
+
+        <div class="card" id="flags-card" hidden>
+          <p class="card-label danger">Risk flags</p>
+          <ul class="flags" id="flags-list"></ul>
+        </div>
+
+        <div class="card" id="balance-card" hidden>
+          <p class="card-label" id="balance-label">Simulated balance changes</p>
+          <ul class="balances" id="balance-list"></ul>
+        </div>
+
+        <div class="card" id="protocols-card" hidden>
+          <p class="card-label">Protocols</p>
+          <ul class="protocols" id="protocol-list"></ul>
+        </div>
+
+        <div class="card" id="patterns-card" hidden>
+          <p class="card-label warn">Similar known exploits</p>
+          <ul class="patterns" id="pattern-list"></ul>
+        </div>
+
+        <details class="details" id="tool-recap">
+          <summary>Agent trace</summary>
+          <ul class="tools compact" id="tool-list-recap"></ul>
+        </details>
+      </section>
+
+      <!-- ── Agent unreachable / failed ── -->
+      <section class="screen" id="screen-error" hidden>
+        <div class="error-box">
+          <p class="error-title" id="error-title">Analysis failed</p>
+          <p class="error-text" id="error-text">—</p>
+        </div>
+        <div class="card">
+          <label class="field-label" for="agent-url-error">Agent server</label>
+          <input class="input" id="agent-url-error" spellcheck="false" />
+          <p class="hint">
+            Start it with <code>pnpm dev</code> in the agent-server project, then retry.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="actions" id="actions" hidden>
+      <button class="btn btn-ghost" id="btn-secondary">Cancel</button>
+      <button class="btn btn-primary" id="btn-primary">Analyze with AEGIS</button>
+    </footer>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -323,7 +323,8 @@ code,
   background: rgba(13, 49, 87, 0.4);
   border: 1px solid rgba(77, 162, 255, 0.28);
   border-radius: 12px;
-  padding: 10px 11px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
 }
 
 .thought-label {
@@ -364,93 +365,209 @@ code,
 }
 
 .tool {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  padding: 7px 10px;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(6, 26, 46, 0.5);
+  border-radius: 8px;
+  background: rgba(6, 26, 46, 0.6);
+  transition: background 0.2s ease, border-color 0.2s ease;
+  user-select: none;
+}
+
+.tool:hover {
+  background: rgba(13, 49, 87, 0.4);
+  border-color: rgba(77, 162, 255, 0.3);
 }
 
 .tool.running {
-  border-color: rgba(77, 162, 255, 0.55);
-  background: rgba(13, 49, 87, 0.45);
+  border-color: rgba(77, 162, 255, 0.6);
+  background: rgba(13, 49, 87, 0.55);
 }
 
 .tool.done {
-  border-color: rgba(92, 230, 168, 0.24);
+  border-color: rgba(92, 230, 168, 0.2);
 }
 
-.tool-icon {
-  font-size: 13px;
-  line-height: 1;
+.tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  width: 100%;
 }
 
-.tool-name {
-  font-family: ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 600;
+.tool-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   overflow: hidden;
-  text-overflow: ellipsis;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.tool-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.icon-done {
+  color: #34d399;
+  font-weight: bold;
+}
+
+.icon-error {
+  color: #f87171;
+  font-weight: bold;
+}
+
+.tool-verb {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: #e2f1ff;
   white-space: nowrap;
 }
 
-.tool-label {
-  display: block;
-  font-family: inherit;
-  font-weight: 400;
-  font-size: 10.5px;
-  color: var(--mist);
-  white-space: normal;
+.tool.running .tool-verb {
+  color: var(--aqua);
 }
 
-.tool-state {
+.tool-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tool-timer {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  color: var(--mist);
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.tool-chevron {
   font-family: ui-monospace, monospace;
-  font-size: 8.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid;
-  white-space: nowrap;
-}
-
-.tool.running .tool-state {
-  color: var(--sui);
-  border-color: rgba(77, 162, 255, 0.5);
-  background: rgba(77, 162, 255, 0.12);
-}
-
-.tool.done .tool-state {
-  color: var(--ok);
-  border-color: rgba(92, 230, 168, 0.4);
-  background: rgba(92, 230, 168, 0.1);
-}
-
-.tool-summary {
-  grid-column: 1 / -1;
-  margin: 2px 0 0;
-  padding-top: 6px;
-  border-top: 1px solid var(--line);
-  font-size: 10.5px;
+  font-size: 10px;
   color: var(--mist);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  width: 10px;
+  text-align: center;
+}
+
+.tool-details {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: max-height 0.2s ease, opacity 0.15s ease, margin-top 0.15s ease;
+}
+
+.tool-details.expanded {
+  max-height: 350px;
+  opacity: 1;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(77, 162, 255, 0.12);
+}
+
+/* ── ReAct Sections Inside Step Cards ── */
+.react-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(2, 10, 20, 0.4);
+  border: 1px solid rgba(77, 162, 255, 0.1);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.react-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  width: fit-content;
+}
+
+.react-thought .react-tag {
+  color: #a5b4fc;
+}
+
+.react-action .react-tag {
+  color: var(--aqua);
+}
+
+.react-observation .react-tag {
+  color: #6ee7b7;
+}
+
+.react-text {
+  margin: 0;
+  font-size: 11px;
   line-height: 1.5;
+  color: #d1e2f4;
+  word-break: break-word;
+}
+
+.react-thought .react-text {
+  font-style: italic;
+  color: #cbd5e1;
+}
+
+.react-observation .react-text {
+  color: #e6edf5;
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 11px;
+  background: var(--aqua);
+  vertical-align: middle;
+  margin-left: 2px;
+  animation: blink 0.7s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 .tool-waiting {
-  grid-template-columns: auto 1fr;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
   color: var(--mist);
 }
 
 .tool-spinner {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
   border: 2px solid rgba(122, 168, 214, 0.25);
-  border-top-color: var(--sui);
+  border-top-color: var(--aqua);
   border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {

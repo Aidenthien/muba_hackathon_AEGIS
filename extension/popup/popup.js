@@ -204,38 +204,157 @@ function renderReview() {
   });
 }
 
-// ── Screen 2: analyzing ──────────────────────────────────────────────
+// ── Screen 2: analyzing (Dynamic ReAct streaming from live agent) ────
 
-function toolNode(call) {
+const STEP_VERBS = {
+  parse_ptb: { running: "parsing ptb...", done: "parsed ptb" },
+  lookup_protocol: { running: "checking protocol registries...", done: "checked protocol registries" },
+  plan_agent: { running: "routing security pipeline...", done: "routed security pipeline" },
+  dry_run_rpc: { running: "simulating on sui rpc...", done: "simulated on sui rpc" },
+  fetch_history: { running: "inspecting wallet history...", done: "inspected wallet history" },
+  vector_search: { running: "scanning known exploit patterns...", done: "scanned known exploit patterns" },
+  score_risk: { running: "computing safety score...", done: "computed safety score" },
+};
+
+// ── Screen 2: analyzing (Claude Code Expandable ReAct rendering) ──────
+
+function setToolExpanded(toolName, expanded) {
+  const call = state.toolCalls.find((t) => t.tool === toolName);
+  if (call) call.expanded = expanded;
+
+  for (const prefix of ["tool-node-", "recap-node-"]) {
+    const node = $(`${prefix}${toolName}`);
+    if (node) {
+      const details = node.querySelector(".tool-details");
+      const chevron = node.querySelector(".tool-chevron");
+      if (details) {
+        if (expanded) details.classList.add("expanded");
+        else details.classList.remove("expanded");
+      }
+      if (chevron) {
+        chevron.textContent = expanded ? "▾" : "▸";
+      }
+    }
+  }
+}
+
+function toolNode(call, isRecap = false) {
   const li = document.createElement("li");
-  li.className = `tool ${call.status === "running" ? "running" : "done"}`;
+  li.className = `tool ${call.status === "running" ? "running" : call.status === "done" ? "done" : ""}`;
+  li.id = isRecap ? `recap-node-${call.tool}` : `tool-node-${call.tool}`;
+
+  const row = document.createElement("div");
+  row.className = "tool-row";
+
+  const left = document.createElement("div");
+  left.className = "tool-left";
 
   const icon = document.createElement("span");
-  icon.className = "tool-icon";
-  icon.textContent = TOOL_ICONS[call.tool] ?? "🔧";
-
-  const name = document.createElement("span");
-  name.className = "tool-name";
-  name.textContent = call.tool;
-  if (call.label) {
-    const label = document.createElement("span");
-    label.className = "tool-label";
-    label.textContent = call.label;
-    name.append(label);
+  icon.className = "tool-status-icon";
+  if (call.status === "running") {
+    const spinner = document.createElement("span");
+    spinner.className = "tool-spinner";
+    icon.appendChild(spinner);
+  } else if (call.status === "done") {
+    icon.className = "tool-status-icon icon-done";
+    icon.textContent = "✓";
+  } else if (call.status === "error") {
+    icon.className = "tool-status-icon icon-error";
+    icon.textContent = "✕";
+  } else {
+    icon.textContent = "•";
   }
 
-  const stateTag = document.createElement("span");
-  stateTag.className = "tool-state";
-  stateTag.textContent = call.status === "running" ? "running" : "done";
+  const defaultVerb = STEP_VERBS[call.tool] || { running: `${call.tool}...`, done: call.tool };
+  const verbText = document.createElement("span");
+  verbText.className = "tool-verb";
+  verbText.textContent = call.status === "running" ? (call.verbRunning || defaultVerb.running) : (call.verbDone || defaultVerb.done);
 
-  li.append(icon, name, stateTag);
+  left.append(icon, verbText);
 
-  if (call.summary) {
-    const p = document.createElement("p");
-    p.className = "tool-summary";
-    p.textContent = call.summary;
-    li.append(p);
+  const right = document.createElement("div");
+  right.className = "tool-right";
+
+  const timer = document.createElement("span");
+  timer.className = "tool-timer";
+  timer.id = isRecap ? `recap-timer-${call.tool}` : `timer-${call.tool}`;
+  const displayElapsed =
+    call.elapsedSec != null
+      ? `${Number(call.elapsedSec).toFixed(1)}s`
+      : call.status === "running"
+      ? "0.0s"
+      : "";
+  timer.textContent = displayElapsed;
+
+  const chevron = document.createElement("span");
+  chevron.className = "tool-chevron";
+  chevron.textContent = call.expanded ? "▾" : "▸";
+
+  right.append(timer, chevron);
+  row.append(left, right);
+  li.append(row);
+
+  // Expandable Detail Block
+  const details = document.createElement("div");
+  details.className = `tool-details ${call.expanded ? "expanded" : ""}`;
+
+  // Direct click handler on the row toggles the local detail block and chevron
+  row.onclick = (e) => {
+    e.stopPropagation();
+    const isNowExpanded = !details.classList.contains("expanded");
+    call.expanded = isNowExpanded;
+    if (isNowExpanded) {
+      details.classList.add("expanded");
+      chevron.textContent = "▾";
+    } else {
+      details.classList.remove("expanded");
+      chevron.textContent = "▸";
+    }
+  };
+
+  // 1. Thought Section
+  if (call.thought) {
+    const thoughtSec = document.createElement("div");
+    thoughtSec.className = "react-section react-thought";
+    const tag = document.createElement("span");
+    tag.className = "react-tag";
+    tag.textContent = "💭 THOUGHT";
+    const text = document.createElement("p");
+    text.className = "react-text thought-text";
+    text.textContent = isRecap ? call.thought : call.renderedThought || call.thought;
+    thoughtSec.append(tag, text);
+    details.append(thoughtSec);
   }
+
+  // 2. Action Section
+  if (call.action) {
+    const actionSec = document.createElement("div");
+    actionSec.className = "react-section react-action";
+    const tag = document.createElement("span");
+    tag.className = "react-tag";
+    tag.textContent = "⚡ ACTION";
+    const text = document.createElement("p");
+    text.className = "react-text action-text";
+    text.textContent = call.action;
+    actionSec.append(tag, text);
+    details.append(actionSec);
+  }
+
+  // 3. Observation Section
+  if (call.observation) {
+    const obsSec = document.createElement("div");
+    obsSec.className = "react-section react-observation";
+    const tag = document.createElement("span");
+    tag.className = "react-tag";
+    tag.textContent = "🔍 OBSERVATION";
+    const text = document.createElement("p");
+    text.className = "react-text obs-text";
+    text.textContent = isRecap ? call.observation : call.renderedObservation || call.observation;
+    obsSec.append(tag, text);
+    details.append(obsSec);
+  }
+
+  li.append(details);
   return li;
 }
 
@@ -243,7 +362,8 @@ function renderTools(targetId) {
   const list = $(targetId);
   if (!list) return;
   if (state.toolCalls.length === 0) return;
-  list.replaceChildren(...state.toolCalls.map(toolNode));
+  const isRecap = targetId === "tool-list-recap";
+  list.replaceChildren(...state.toolCalls.map((c) => toolNode(c, isRecap)));
 }
 
 function renderThought(text, source) {
@@ -252,6 +372,151 @@ function renderThought(text, source) {
   const src = $("thought-src");
   src.hidden = !source;
   if (source) src.textContent = source;
+}
+
+// ── Pacing Queue, Timers & Typewriter Engine ─────────────────────────
+
+const eventQueue = [];
+let isProcessingQueue = false;
+let stopQueue = false;
+let liveTimerInterval = null;
+
+function startLiveTimer() {
+  if (liveTimerInterval) return;
+  liveTimerInterval = setInterval(() => {
+    const runningStep = state.toolCalls.find((t) => t.status === "running");
+    if (!runningStep || !runningStep.startTime) return;
+    const elapsed = ((performance.now() - runningStep.startTime) / 1000).toFixed(1);
+    runningStep.elapsedSec = elapsed;
+    const timerEl = $(`timer-${runningStep.tool}`);
+    if (timerEl) {
+      timerEl.textContent = `${elapsed}s`;
+    }
+  }, 100);
+}
+
+function stopLiveTimer() {
+  if (liveTimerInterval) {
+    clearInterval(liveTimerInterval);
+    liveTimerInterval = null;
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function scrollToBottom() {
+  const body = document.querySelector(".body");
+  if (body) {
+    body.scrollTop = body.scrollHeight;
+  }
+}
+
+async function typewriteText(element, fullText, speed = 14) {
+  if (!element || !fullText) return;
+  element.textContent = "";
+  const cursor = document.createElement("span");
+  cursor.className = "typewriter-cursor";
+  element.appendChild(cursor);
+
+  for (let i = 0; i < fullText.length; i++) {
+    if (stopQueue) break;
+    element.textContent = fullText.slice(0, i + 1);
+    element.appendChild(cursor);
+    scrollToBottom();
+    await sleep(speed);
+  }
+  element.textContent = fullText;
+}
+
+async function processQueue() {
+  if (isProcessingQueue) return;
+  isProcessingQueue = true;
+
+  while (eventQueue.length > 0 && !stopQueue) {
+    const event = eventQueue.shift();
+
+    if (event.type === "tool_start") {
+      let call = state.toolCalls.find((t) => t.tool === event.tool);
+
+      if (!call) {
+        call = {
+          tool: event.tool,
+          status: "running",
+          startTime: performance.now(),
+          expanded: true,
+          thought: event.thought || "",
+          action: event.action || event.label || event.tool,
+          verbRunning: event.verbRunning || "",
+          verbDone: event.verbDone || "",
+          observation: "",
+          renderedThought: "",
+          renderedObservation: "",
+        };
+        state.toolCalls.push(call);
+      } else {
+        call.status = "running";
+        call.startTime = performance.now();
+        call.expanded = true;
+        if (event.thought) call.thought = event.thought;
+        if (event.action || event.label) call.action = event.action || event.label;
+        if (event.verbRunning) call.verbRunning = event.verbRunning;
+        if (event.verbDone) call.verbDone = event.verbDone;
+      }
+
+      startLiveTimer();
+      renderTools("tool-list");
+      const node = $(`tool-node-${call.tool}`);
+      const thoughtEl = node?.querySelector(".react-thought .react-text");
+      if (thoughtEl && call.thought) {
+        await typewriteText(thoughtEl, call.thought, 14);
+        call.renderedThought = call.thought;
+      }
+      scrollToBottom();
+      await sleep(350);
+    } else if (event.type === "tool_end") {
+      let call = state.toolCalls.find((t) => t.tool === event.tool);
+      if (call) {
+        call.status = "done";
+        call.endTime = performance.now();
+        call.elapsedSec = (
+          (call.endTime - (call.startTime || performance.now())) /
+          1000
+        ).toFixed(1);
+
+        if (event.thought) call.thought = event.thought;
+        if (event.verbDone) call.verbDone = event.verbDone;
+        call.observation = event.observation || event.summary || "Completed.";
+
+        renderTools("tool-list");
+        const node = $(`tool-node-${call.tool}`);
+        const obsEl = node?.querySelector(".react-observation .react-text");
+        if (obsEl && call.observation) {
+          await typewriteText(obsEl, call.observation, 14);
+          call.renderedObservation = call.observation;
+        }
+        scrollToBottom();
+
+        // Auto-collapse after ~500ms so it stays clean and compact
+        await sleep(500);
+        setToolExpanded(call.tool, false);
+        await sleep(150);
+      }
+    } else if (event.type === "thought") {
+      renderThought(event.text, event.source);
+      const textEl = $("thought-text");
+      if (textEl && event.text) {
+        await typewriteText(textEl, event.text, 14);
+      }
+    } else if (event.type === "result") {
+      stopLiveTimer();
+      await sleep(800);
+      if (event.data) renderVerdict(event.data);
+    }
+  }
+
+  isProcessingQueue = false;
 }
 
 // ── Screen 3: verdict ────────────────────────────────────────────────
@@ -274,9 +539,14 @@ function formatBalanceChange(amount, coinType) {
 }
 
 function fill(listId, cardId, items, build) {
-  if (!items || items.length === 0) return;
-  $(cardId).hidden = false;
-  $(listId).replaceChildren(...items.map(build));
+  const card = $(cardId);
+  const list = $(listId);
+  if (!items || items.length === 0) {
+    if (card) card.hidden = true;
+    return;
+  }
+  if (card) card.hidden = false;
+  if (list) list.replaceChildren(...items.map(build));
 }
 
 function renderVerdict(analysis) {
@@ -384,50 +654,18 @@ function renderFatal(title, message) {
   setActions({ primary: "Close", onPrimary: () => window.close() });
 }
 
-// ── The analysis run ─────────────────────────────────────────────────
-
 function handleEvent(payload) {
   if (!payload || typeof payload !== "object") return;
-
-  switch (payload.type) {
-    case "tool_start": {
-      const existing = state.toolCalls.find((t) => t.tool === payload.tool);
-      if (existing) {
-        existing.status = "running";
-        existing.label = payload.label ?? existing.label;
-      } else {
-        state.toolCalls.push({
-          tool: payload.tool,
-          label: payload.label ?? "",
-          status: "running",
-        });
-      }
-      renderTools("tool-list");
-      break;
-    }
-    case "tool_end": {
-      const call = state.toolCalls.find((t) => t.tool === payload.tool);
-      if (call) {
-        call.status = "completed";
-        call.summary = payload.summary ?? call.summary;
-      }
-      renderTools("tool-list");
-      break;
-    }
-    case "thought":
-      renderThought(payload.text, payload.source);
-      break;
-    case "result":
-      if (payload.data) renderVerdict(payload.data);
-      break;
-    case "error":
-      throw new Error(payload.message || "The agent reported a failure.");
-    default:
-      break;
+  if (payload.type === "error") {
+    throw new Error(payload.message || "The agent reported a failure.");
   }
+  eventQueue.push(payload);
+  void processQueue();
 }
 
 async function runAnalysis() {
+  stopQueue = false;
+  eventQueue.length = 0;
   state.toolCalls = [];
   state.analysis = null;
   $("thought-box").hidden = true;
@@ -447,7 +685,10 @@ async function runAnalysis() {
     primary: "Analyzing…",
     primaryDisabled: true,
     secondary: "Cancel",
-    onSecondary: () => decide(false),
+    onSecondary: () => {
+      stopQueue = true;
+      decide(false);
+    },
   });
 
   const controller = new AbortController();
@@ -535,15 +776,21 @@ async function runAnalysis() {
         }
       }
     }
+
+    // Wait for the animated presentation queue to finish displaying all steps
+    while ((isProcessingQueue || eventQueue.length > 0) && !controller.signal.aborted) {
+      await sleep(50);
+    }
   } catch (e) {
     if (controller.signal.aborted) return;
     renderError("Analysis failed", e?.message ?? "The agent stream ended unexpectedly.");
     return;
   } finally {
+    stopLiveTimer();
     state.abort = null;
   }
 
-  if (!state.analysis) {
+  if (!state.analysis && !controller.signal.aborted && !stopQueue) {
     renderError(
       "No verdict returned",
       "The agent stream closed without emitting a result. Check the agent server logs and retry."

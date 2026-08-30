@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:scenarios": "npx tsx scripts/test-demo-scenarios.ts",
     "pack:extension": "node scripts/pack-extension.mjs"
   },
   "dependencies": {

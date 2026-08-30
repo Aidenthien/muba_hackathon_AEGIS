@@ -9,11 +9,11 @@ import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
  */
 
 const CETUS_PACKAGE =
-  "0xa9556bc9000000000000000000000000000000000000000000000000000000a1";
+  "0x603912ab3714c5333b58f30523e379a87b95e975fae5e9a9c7565ed9c1b073d8";
 const NAVI_PACKAGE =
-  "0xc963eaed000000000000000000000000000000000000000000000000000000b2";
+  "0x603912ab3714c5333b58f30523e379a87b95e975fae5e9a9c7565ed9c1b073d8";
 const BUCKET_PACKAGE =
-  "0xe2f3a4b5000000000000000000000000000000000000000000000000000000d4";
+  "0x603912ab3714c5333b58f30523e379a87b95e975fae5e9a9c7565ed9c1b073d8";
 const UNKNOWN_PACKAGE =
   "0xdeadbeef00000000000000000000000000000000000000000000000000000099";
 
@@ -71,18 +71,19 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "cetus-swap",
     label: "DeFi Swap · Cetus",
-    blurb: "Swap SUI via Cetus router. Recognized audited protocol (Approve).",
-    executable: false,
+    blurb: "Swap 0.05 SUI via Cetus router on Sui Testnet. Recognized audited protocol (Approve).",
+    executable: true,
     sponsorable: false,
     expected: "approve",
     build: (sender) => {
       const tx = new Transaction();
       tx.setSender(sender);
-      const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(MIST_PER_SUI)]);
-      tx.moveCall({
+      const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(50_000_000n)]);
+      const [swapped] = tx.moveCall({
         target: `${CETUS_PACKAGE}::router::swap_exact_input`,
         arguments: [coin],
       });
+      tx.transferObjects([swapped], tx.pure.address(sender));
       return tx;
     },
   },
@@ -90,13 +91,13 @@ export const SCENARIOS: Scenario[] = [
     id: "multi-protocol",
     label: "Complex DeFi Chain",
     blurb: "Multi-step swap + lending + farming across Cetus, NAVI, and Bucket. Medium risk (Caution).",
-    executable: false,
+    executable: true,
     sponsorable: false,
     expected: "caution",
     build: (sender) => {
       const tx = new Transaction();
       tx.setSender(sender);
-      const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(10_000_000_000n)]);
+      const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(50_000_000n)]);
       const [swapped] = tx.moveCall({
         target: `${CETUS_PACKAGE}::pool::swap_exact_input`,
         arguments: [coin],
@@ -107,7 +108,7 @@ export const SCENARIOS: Scenario[] = [
       });
       const [borrowed] = tx.moveCall({
         target: `${NAVI_PACKAGE}::lending::borrow`,
-        arguments: [tx.pure.u64(3_000_000_000n)],
+        arguments: [tx.pure.u64(15_000_000n)],
       });
       tx.moveCall({
         target: `${BUCKET_PACKAGE}::farm::stake`,
@@ -126,7 +127,7 @@ export const SCENARIOS: Scenario[] = [
     build: (sender) => {
       const tx = new Transaction();
       tx.setSender(sender);
-      const [loot] = tx.splitCoins(tx.gas, [tx.pure.u64(60n * MIST_PER_SUI)]);
+      const [loot] = tx.splitCoins(tx.gas, [tx.pure.u64(50_000_000n)]);
       tx.moveCall({
         target: `${UNKNOWN_PACKAGE}::rewards::claim_airdrop`,
         arguments: [],

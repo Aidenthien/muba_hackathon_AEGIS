@@ -16,36 +16,56 @@ export const SCRAMBLE_CHARS = "01<>/#░▒▓ØΞ×";
  *  [data-reveal]    — fade-slide up (same data-reveal-group staggers together)
  *  [data-title]     — SplitText masked line reveal for headings
  *  [data-scramble]  — matrix-style decode of the element's text
+ *
+ * All of it sits behind `prefers-reduced-motion: no-preference`. Every one of
+ * these effects starts from opacity 0, so for a reader who asked for less
+ * motion the honest behaviour isn't a faster animation — it's no animation and
+ * a page that is simply already there. Nothing hides content in CSS, so if this
+ * hook never runs the section still reads.
  */
 export function useReveal(root: RefObject<HTMLElement | null>) {
   useEffect(() => {
     if (!root.current) return;
 
-    const ctx = gsap.context(() => {
-      /* fade-slide groups */
-      const groups = new Map<string, HTMLElement[]>();
-      gsap.utils.toArray<HTMLElement>("[data-reveal]").forEach((el) => {
-        const key = el.dataset.revealGroup ?? `solo-${Math.random()}`;
-        groups.set(key, [...(groups.get(key) ?? []), el]);
-      });
+    const mm = gsap.matchMedia();
 
-      groups.forEach((els) => {
-        gsap.fromTo(
-          els,
-          { y: 48, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 1.1,
-            ease: "power3.out",
-            stagger: 0.12,
-            scrollTrigger: {
-              trigger: els[0],
-              start: "top 85%",
-            },
-          }
-        );
-      });
+    mm.add("(prefers-reduced-motion: no-preference)", () => {
+      /* fade-slide groups.
+
+         Grouped members are batched: ScrollTrigger.batch collects everything
+         crossing the line within one frame into a single staggered tween, so a
+         six-card grid costs one tween rather than six. It also staggers by what
+         actually entered, which is what makes a partially-scrolled grid look
+         right instead of replaying from the first card. */
+      const grouped = new Map<string, HTMLElement[]>();
+      const solo: HTMLElement[] = [];
+
+      for (const el of gsap.utils.toArray<HTMLElement>("[data-reveal]")) {
+        const key = el.dataset.revealGroup;
+        if (key) grouped.set(key, [...(grouped.get(key) ?? []), el]);
+        else solo.push(el);
+      }
+
+      const enter = (els: Element[]) =>
+        gsap.to(els, {
+          y: 0,
+          opacity: 1,
+          duration: 1.1,
+          ease: "power3.out",
+          stagger: 0.12,
+          overwrite: true,
+        });
+
+      for (const els of [...grouped.values(), ...(solo.length ? [solo] : [])]) {
+        gsap.set(els, { y: 48, opacity: 0 });
+        ScrollTrigger.batch(els, {
+          start: "top 85%",
+          // once: a long page shouldn't re-animate copy the reader already read
+          // on the way back up.
+          once: true,
+          onEnter: enter,
+        });
+      }
 
       /* masked line reveals for big headings */
       gsap.utils.toArray<HTMLElement>("[data-title]").forEach((el) => {
@@ -85,8 +105,8 @@ export function useReveal(root: RefObject<HTMLElement | null>) {
           },
         });
       });
-    }, root);
+    }, root.current);
 
-    return () => ctx.revert();
+    return () => mm.revert();
   }, [root]);
 }

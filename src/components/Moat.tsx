@@ -3,37 +3,45 @@
 import { useRef } from "react";
 import { useReveal } from "@/lib/useReveal";
 import BorderGlow from "@/components/BorderGlow";
+import {
+  IconAlert,
+  IconBook,
+  IconBraces,
+  IconFlask,
+  IconShield,
+  IconZap,
+} from "@/components/Icons";
 
 const FEATURES = [
   {
     title: "Zero Custody, Zero God-Mode",
     body: "AEGIS never holds funds, private keys, or Admin Capabilities. There is nothing to steal, nothing to inject into, and no kill switch to abuse.",
-    icon: "◈",
+    Icon: IconShield,
   },
   {
     title: "Deterministic Move Simulation",
     body: "Dry-runs compute the exact post-state of any PTB against live chain data. Verdicts are grounded in execution results — not guesses about intent.",
-    icon: "≡",
+    Icon: IconFlask,
   },
   {
     title: "Known-Protocol Registry",
     body: "Every Move call is resolved against a registry of Sui protocols carrying audit status and risk rating. A call into an unverified package gets named as one, not silently trusted.",
-    icon: "◎",
+    Icon: IconBook,
   },
   {
     title: "One-Call dApp SDK",
     body: "Import one object, call one method, branch on the result. aegis.analyze() never throws — every outcome, including “not installed”, comes back as a status you can handle.",
-    icon: "▣",
+    Icon: IconBraces,
   },
   {
     title: "Hallucination-Proof by Design",
     body: "A false positive is a dismissible warning — not a frozen protocol. The failure mode of AEGIS is friction; the failure mode of intervening AI is catastrophe.",
-    icon: "✕",
+    Icon: IconAlert,
   },
   {
     title: "Gasless by Design",
     body: "zkLogin sign-in plus Enoki-sponsored gas means a user with no wallet and no SUI can transact — and still sees the verdict before they sign. Onboarding without a funding step.",
-    icon: "§",
+    Icon: IconZap,
   },
 ];
 
@@ -68,8 +76,8 @@ export default function Moat() {
                 data-reveal-group="moat"
                 className="group bg-ink p-8 transition-colors duration-500 hover:bg-panel/60"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-line font-display text-lg text-sui transition-all duration-500 group-hover:border-sui/60 group-hover:text-aqua group-hover:shadow-[0_0_20px_rgba(77,162,255,0.3)]">
-                  {f.icon}
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-line text-sui transition-all duration-500 group-hover:border-sui/60 group-hover:text-aqua group-hover:shadow-[0_0_20px_rgba(77,162,255,0.3)]">
+                  <f.Icon className="h-5 w-5" />
                 </span>
                 <h3 className="mt-6 font-grotesk text-xl font-semibold text-white">
                   {f.title}

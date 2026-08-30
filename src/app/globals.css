@@ -128,16 +128,6 @@ body {
   animation: marquee 36s linear infinite;
 }
 
-/* scroll cue */
-@keyframes cue-drop {
-  0% { transform: translateY(-8px); opacity: 0; }
-  35% { opacity: 1; }
-  100% { transform: translateY(10px); opacity: 0; }
-}
-.animate-cue {
-  animation: cue-drop 1.8s ease-in-out infinite;
-}
-
 /* terminal cursor */
 @keyframes blink {
   0%, 45% { opacity: 1; }
@@ -155,4 +145,59 @@ body {
 }
 .animate-ping-soft {
   animation: ping-soft 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Light theme, scoped to whatever element carries data-doc-theme.
+
+   Every branded utility compiles to var(--color-*), so redefining the
+   tokens on a subtree retints the entire page without touching a single
+   className — which is what keeps the developer docs ONE component with
+   two skins instead of a second copy that drifts out of sync.
+   ────────────────────────────────────────────────────────────────── */
+[data-doc-theme="light"] {
+  --color-ink: #f8fafc;
+  --color-abyss: #eef2f7;
+  --color-panel: #ffffff;
+  --color-line: rgba(15, 23, 42, 0.12);
+  --color-sui: #2563eb;
+  --color-aqua: #0e7490;
+  --color-mist: #475569;
+  /* text-white resolves to var(--color-white); flipping it here turns every
+     "white" heading into near-black without rewriting the markup. */
+  --color-white: #0f172a;
+  color: #0f172a;
+}
+
+[data-doc-theme="light"] .glass {
+  background: linear-gradient(160deg, #ffffff, #f6f9fd);
+  border: 1px solid var(--color-line);
+  backdrop-filter: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+[data-doc-theme="light"] .text-gradient-blue {
+  background: linear-gradient(100deg, #0f172a 5%, #1d4ed8 45%, #2563eb 75%, #0e7490 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* The spotlights are built for a black ground; at full strength they read as
+   dirty smudges on white. */
+[data-doc-theme="light"] .spot {
+  opacity: 0.35;
+  filter: blur(110px);
+}
+
+/* Code stays dark in both themes — the light-on-dark sample is the convention
+   readers expect, and it gives the page a fixed point to rest on. Re-asserting
+   the dark tokens on the subtree restores the palette its children ask for. */
+[data-doc-theme="light"] .doc-code {
+  --color-ink: #020710;
+  --color-line: rgba(122, 168, 214, 0.14);
+  --color-sui: #4da2ff;
+  --color-aqua: #6ff7ff;
+  --color-mist: #a5bad2;
+  --color-white: #ffffff;
 }

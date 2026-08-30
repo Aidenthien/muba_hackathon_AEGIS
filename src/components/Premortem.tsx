@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { useReveal } from "@/lib/useReveal";
 import BorderGlow from "@/components/BorderGlow";
+import { IconClock, IconDatabase, IconKey } from "@/components/Icons";
 
 const FAILURES = [
   {
@@ -10,18 +11,21 @@ const FAILURES = [
     title: "The Mempool Myth",
     body: "Sui has no waiting room. Owned-object transactions bypass consensus and finalize in ~400ms; even shared-object DeFi flows settle sub-second. An off-chain AI watching “the mempool” is racing a chain that already finished. The hack is over before the HTTP request routes.",
     tag: "ARCHITECTURE",
+    Icon: IconClock,
   },
   {
     id: "F-02",
     title: "The God-Mode Key",
     body: "An AI that can pause contracts or move funds needs a privileged Admin Capability — a centralized kill switch wearing a security badge. One prompt-injection payload hidden in on-chain metadata, or one hallucinated “attack” on a high-volume day, and your guard becomes the exploit.",
     tag: "TRUST MODEL",
+    Icon: IconKey,
   },
   {
     id: "F-03",
     title: "The Indexing Wall",
     body: "Every Sui asset is a distinct cryptographic object with its own lineage — not a row in a balances table. Real-time indexing of millions of dynamic objects into an LLM context window means runaway cloud spend and latency that kills the product before the market does.",
     tag: "INFRASTRUCTURE",
+    Icon: IconDatabase,
   },
 ];
 
@@ -84,7 +88,10 @@ export default function Premortem() {
                     </span>
                   </div>
 
-                  <h3 className="mt-8 font-grotesk text-2xl font-semibold text-white">
+                  <span className="mt-8 flex h-11 w-11 items-center justify-center rounded-xl border border-danger/30 bg-danger/10 text-danger transition-colors duration-500 group-hover:border-danger/60">
+                    <f.Icon className="h-5 w-5" />
+                  </span>
+                  <h3 className="mt-5 font-grotesk text-2xl font-semibold text-white">
                     {f.title}
                   </h3>
                   <p className="mt-4 text-[15px] leading-7 text-pretty text-mist">{f.body}</p>

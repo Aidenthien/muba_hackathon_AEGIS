@@ -1,20 +1,16 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import dynamic from "next/dynamic";
+import Image from "next/image";
 import gsap from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { ScrambleTextPlugin } from "gsap/ScrambleTextPlugin";
 import { onLoaded } from "@/lib/loader";
 import { SCRAMBLE_CHARS } from "@/lib/useReveal";
 import BorderGlow from "@/components/BorderGlow";
+import aegisBackdrop from "@/app/aegis-background.png";
 
 gsap.registerPlugin(SplitText, ScrambleTextPlugin);
-
-const HeroScene = dynamic(() => import("./three/HeroScene"), {
-  ssr: false,
-  loading: () => null,
-});
 
 const STATS = [
   { value: "~400ms", label: "Sui finality we never race" },
@@ -74,18 +70,7 @@ export default function Hero() {
           "-=0.4"
         );
 
-      // gentle parallax: scene sinks and content drifts as you scroll away
-      gsap.to("[data-hero-canvas]", {
-        yPercent: 18,
-        opacity: 0.35,
-        ease: "none",
-        scrollTrigger: {
-          trigger: root.current,
-          start: "top top",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
+      // content drifts up and fades as the hero scrolls away
       gsap.to("[data-hero-content]", {
         yPercent: -12,
         opacity: 0,
@@ -104,15 +89,34 @@ export default function Hero() {
 
   return (
     <section ref={root} className="relative flex min-h-screen flex-col overflow-hidden">
-      {/* 3D scene */}
-      <div data-hero-canvas className="absolute inset-0">
-        <HeroScene />
+      {/* Backdrop — decorative, so alt is empty and it stays out of the
+          accessibility tree. priority because it is the LCP element.
+
+          object-contain, not cover: the source is 1.78:1 and the hero is wider
+          than that on a typical laptop, so cover would crop ~180px off the top
+          and bottom — exactly where the crown and the shoulders live. Contain
+          leaves side bars instead, which are invisible here because the image's
+          own background is black against the near-black page. */}
+      <div className="pointer-events-none absolute inset-0">
+        <Image
+          src={aegisBackdrop}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-contain object-center opacity-[0.35]"
+        />
       </div>
+
+      {/* Scrim sized to the text column: darkest behind the headline, clearing
+          by the edges so the crown, horses and shoulders stay legible. Without
+          it the marble reads through the type at almost the same value. */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_54%_38%_at_50%_46%,rgba(2,7,16,0.88)_0%,rgba(2,7,16,0.5)_50%,transparent_78%)]" />
 
       {/* atmosphere */}
       <div className="spot left-1/2 top-1/3 h-[540px] w-[540px] -translate-x-1/2 bg-sui/15" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,#020710_82%)]" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-ink to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_62%,rgba(2,7,16,0.3)_88%,rgba(2,7,16,0.7)_100%)]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-ink/80 to-transparent" />
 
       {/* content */}
       <div
@@ -147,17 +151,11 @@ export default function Hero() {
           they never need SUI to stay safe. No custody. No admin keys.
           No postmortems.
         </p>
-
-        {/* scroll cue — in flow, so it never collides with the stat bar */}
-        <div className="pointer-events-none mt-14 hidden lg:block">
-          <div className="mx-auto flex h-10 w-6 items-start justify-center rounded-full border border-line pt-2">
-            <span className="animate-cue h-2 w-0.5 rounded bg-aqua" />
-          </div>
-        </div>
       </div>
 
-      {/* stat bar */}
-      <div className="relative z-10 w-full px-6 pb-10">
+      {/* stat bar — pb sits higher than the page's usual rhythm on purpose,
+          lifting the bar into the gap the scroll cue used to occupy. */}
+      <div className="relative z-10 w-full px-6 pb-20">
         <BorderGlow className="mx-auto w-full max-w-5xl" backgroundColor="rgba(2, 7, 16, 0.7)">
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-line md:grid-cols-4">
             {STATS.map((s) => (

@@ -7,7 +7,6 @@ import Premortem from "@/components/Premortem";
 import Pivot from "@/components/Pivot";
 import Pipeline from "@/components/Pipeline";
 import Moat from "@/components/Moat";
-import CTA from "@/components/CTA";
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -22,7 +21,6 @@ export default function Home() {
         <Pivot />
         <Pipeline />
         <Moat />
-        <CTA />
       </main>
       <Footer />
     </SmoothScroll>

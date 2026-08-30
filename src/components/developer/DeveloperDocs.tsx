@@ -1,9 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import gsap from "gsap";
 import AegisMark from "@/components/AegisMark";
 import CodeBlock from "./CodeBlock";
+import {
+  IconArrowRight,
+  IconChevron,
+  IconDownload,
+  IconMoon,
+  IconShield,
+  IconSun,
+  SECTION_ICONS,
+} from "./DocIcons";
+import { useDocsMotion } from "./useDocsMotion";
 
 const SECTIONS = [
   { id: "getting-started", label: "Getting started" },
@@ -12,10 +23,12 @@ const SECTIONS = [
   { id: "statuses", label: "Handling every status" },
   { id: "api", label: "API reference" },
   { id: "detect", label: "Detecting the extension" },
-  { id: "how-it-works", label: "How it works" },
   { id: "agent-server", label: "Agent server" },
   { id: "troubleshooting", label: "Troubleshooting" },
 ];
+
+/** Stable identity: passing a fresh array would re-run the motion effect. */
+const SECTION_IDS = SECTIONS.map((s) => s.id);
 
 const QUICK_START = `import { aegis } from "@/lib/aegis-sdk";
 
@@ -173,20 +186,6 @@ const ANALYSIS_SHAPE = `interface AgentAnalysis {
   }[];
 }`;
 
-const ARCHITECTURE = `your dApp                      window.aegis            inpage.js  (MAIN world)
-    │  aegis.analyze(tx)              │
-    ▼                                 ▼
-content script  ──── long-lived Port ────▶  service worker      background.js
-                                                  │
-                                                  │ chrome.action.openPopup()   ← Chrome 127+
-                                                  │ chrome.windows.create       ← fallback
-                                                  ▼
-                                       confirmation panel        popup/
-                                       review → stream → verdict
-                                                  │
-                                                  ▼
-                                          agent server :3001`;
-
 const INSTALL_STEPS = [
   {
     title: "Download the extension",
@@ -245,26 +244,149 @@ const TROUBLESHOOTING = [
   },
 ];
 
+/* ── Theme preference ──────────────────────────────────────────────
+   localStorage is an external store, so it's read through
+   useSyncExternalStore rather than an effect: no setState-in-effect
+   cascade, correct SSR snapshot, and it syncs across tabs for free. */
+
+const THEME_KEY = "aegis-docs-theme";
+type DocTheme = "dark" | "light";
+
+const themeListeners = new Set<() => void>();
+
+function subscribeTheme(onChange: () => void) {
+  themeListeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    themeListeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function readTheme(): DocTheme {
+  try {
+    return localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark";
+  } catch {
+    return "dark"; // private mode or blocked storage
+  }
+}
+
+/** The server has no preference to read, so it always renders the dark skin. */
+function readThemeOnServer(): DocTheme {
+  return "dark";
+}
+
+function writeTheme(next: DocTheme) {
+  try {
+    localStorage.setItem(THEME_KEY, next);
+  } catch {
+    // Storage blocked — the toggle below still works for this session.
+  }
+  for (const listener of themeListeners) listener();
+}
+
+/**
+ * Section kicker with its glyph. Reading the icon off SECTION_ICONS by id keeps
+ * the heading and the sidebar entry from ever drifting apart.
+ */
+function SectionLabel({ id, children }: { id: string; children: React.ReactNode }) {
+  const Icon = SECTION_ICONS[id];
+  return (
+    <p className="kicker flex items-center gap-2.5">
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-sui/30 bg-sui/10 text-sui">
+        <Icon className="h-4 w-4" />
+      </span>
+      {children}
+    </p>
+  );
+}
+
+/**
+ * Accordion row. Animating grid-template-rows between 0fr and 1fr is the one
+ * height transition that works without measuring the content, so answers of any
+ * length open at the same speed.
+ */
+function Faq({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className={`glass overflow-hidden rounded-xl transition-colors duration-300 ${
+        open ? "border-sui/40" : "hover:border-sui/25"
+      }`}
+    >
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 px-5 py-4 text-left"
+      >
+        <IconChevron
+          className={`h-4 w-4 shrink-0 text-sui transition-transform duration-300 ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+        <span className="font-grotesk text-[15px] font-medium text-white">{q}</span>
+      </button>
+      <div
+        className="grid transition-[grid-template-rows] duration-300 ease-out"
+        style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
+      >
+        <div className="overflow-hidden">
+          <p className="mx-5 border-t border-line pb-4 pt-3 text-[13.5px] leading-relaxed text-mist">
+            {a}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DeveloperDocs() {
   const [active, setActive] = useState(SECTIONS[0].id);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const pillRef = useRef<HTMLSpanElement>(null);
+  const theme = useSyncExternalStore(subscribeTheme, readTheme, readThemeOnServer);
 
-  // Highlight the section currently nearest the top of the viewport.
+  function toggleTheme() {
+    writeTheme(theme === "dark" ? "light" : "dark");
+  }
+
+  useDocsMotion({
+    root: rootRef,
+    progress: progressRef,
+    sectionIds: SECTION_IDS,
+    onActiveChange: setActive,
+  });
+
+  // One reusable tween for the sidebar highlight. quickTo re-targets the same
+  // tween on every section change; building a context per change would revert
+  // the previous position and make the pill jump back to 0 before each move.
+  const pillTo = useRef<((value: number) => void) | null>(null);
+
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) setActive(visible[0].target.id);
-      },
-      { rootMargin: "-88px 0px -70% 0px" }
-    );
-    for (const s of SECTIONS) {
-      const el = document.getElementById(s.id);
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
+    const pill = pillRef.current;
+    if (!pill) return;
+    pillTo.current = gsap.quickTo(pill, "y", { duration: 0.45, ease: "power3" });
+    return () => {
+      gsap.killTweensOf(pill);
+      pillTo.current = null;
+    };
   }, []);
+
+  // Slide the highlight to the active entry. Transform only — the entries are
+  // a uniform height, so height is set rather than animated.
+  useEffect(() => {
+    const nav = navRef.current;
+    const pill = pillRef.current;
+    if (!nav || !pill) return;
+    const target = nav.querySelector<HTMLElement>(`[data-nav-id="${active}"]`);
+    if (!target) return;
+    // autoAlpha also flips visibility, so the pill can't be read by assistive
+    // tech or catch a click before it has ever been positioned.
+    gsap.set(pill, { height: target.offsetHeight, autoAlpha: 1 });
+    pillTo.current?.(target.offsetTop);
+  }, [active]);
 
   function jump(e: React.MouseEvent<HTMLAnchorElement>, id: string) {
     e.preventDefault();
@@ -273,7 +395,7 @@ export default function DeveloperDocs() {
   }
 
   return (
-    <div className="relative min-h-screen">
+    <div ref={rootRef} data-doc-theme={theme} className="relative min-h-screen bg-ink">
       {/* Own clipping layer: the spots hang past both edges, and putting
           overflow-hidden on an ancestor would kill the sticky sidebar. */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -291,7 +413,19 @@ export default function DeveloperDocs() {
               Developers
             </span>
           </Link>
-          <nav className="flex items-center gap-5">
+          <nav className="flex items-center gap-4">
+            <button
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+              title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-mist transition-all duration-300 hover:border-sui/60 hover:text-aqua"
+            >
+              {theme === "dark" ? (
+                <IconSun className="h-4 w-4" />
+              ) : (
+                <IconMoon className="h-4 w-4" />
+              )}
+            </button>
             <Link
               href="/demo-light"
               className="font-mono text-xs uppercase tracking-[0.18em] text-mist transition-colors hover:text-aqua"
@@ -301,33 +435,90 @@ export default function DeveloperDocs() {
             <a
               href="/aegis-extension.zip"
               download
-              className="rounded-full border border-sui/50 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition-all hover:border-aqua hover:shadow-[0_0_20px_rgba(77,162,255,0.3)]"
+              data-doc-magnetic
+              className="group flex items-center gap-2 rounded-full border border-sui/50 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition-colors hover:border-aqua hover:shadow-[0_0_20px_rgba(77,162,255,0.3)]"
             >
+              <IconDownload className="h-3.5 w-3.5 text-aqua transition-transform duration-300 group-hover:translate-y-0.5" />
               Download
             </a>
           </nav>
         </div>
+
+        {/* Mobile section rail — the sidebar is desktop-only, so without this
+            there is no way to move between sections on a phone. */}
+        <div className="overflow-x-auto border-t border-line/60 lg:hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max gap-2 px-6 py-2.5">
+            {SECTIONS.map((sec) => {
+              const Icon = SECTION_ICONS[sec.id];
+              return (
+                <a
+                  key={sec.id}
+                  href={`#${sec.id}`}
+                  onClick={(e) => jump(e, sec.id)}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors ${
+                    active === sec.id
+                      ? "border-sui/60 bg-sui/10 text-aqua"
+                      : "border-line text-mist"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {sec.label}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Reading progress */}
+        <div
+          ref={progressRef}
+          className="h-px origin-left scale-x-0 bg-gradient-to-r from-sui to-aqua shadow-[0_0_10px_rgba(77,162,255,0.7)]"
+        />
       </header>
 
       <div className="mx-auto flex max-w-7xl gap-12 px-6 py-14">
         {/* ── Sidebar ── */}
         <aside className="hidden w-56 shrink-0 lg:block">
-          <nav className="sticky top-28 space-y-1">
+          <nav ref={navRef} className="sticky top-28">
             <p className="kicker mb-4">On this page</p>
-            {SECTIONS.map((s) => (
-              <a
-                key={s.id}
-                href={`#${s.id}`}
-                onClick={(e) => jump(e, s.id)}
-                className={`block border-l-2 py-1.5 pl-3 text-[13px] transition-colors ${
-                  active === s.id
-                    ? "border-sui text-aqua"
-                    : "border-line text-mist hover:border-sui/50 hover:text-white"
-                }`}
-              >
-                {s.label}
-              </a>
-            ))}
+            {/* flex + gap rather than space-y: space-y margins every child after
+                the first, which would hand the first link a 4px offset it
+                didn't have. Absolutely positioned children aren't flex items,
+                so the pill costs the layout nothing. */}
+            <div className="relative flex flex-col gap-1">
+              {/* Must live inside this positioned wrapper, not the <nav>: the
+                  pill is placed with the links' offsetTop, so it has to share
+                  their offsetParent or it lands short by the kicker's height. */}
+              <span
+                ref={pillRef}
+                aria-hidden="true"
+                className="pointer-events-none invisible absolute left-0 top-0 w-full rounded-r-md bg-sui/[0.09] opacity-0"
+              />
+            {SECTIONS.map((sec) => {
+              const Icon = SECTION_ICONS[sec.id];
+              const isActive = active === sec.id;
+              return (
+                <a
+                  key={sec.id}
+                  href={`#${sec.id}`}
+                  onClick={(e) => jump(e, sec.id)}
+                  data-nav-id={sec.id}
+                  className={`group relative flex items-center gap-2.5 border-l-2 py-2 pl-3 text-[13px] transition-all duration-300 ${
+                    isActive
+                      ? "border-sui text-aqua"
+                      : "border-line text-mist hover:border-sui/50 hover:pl-4 hover:text-white"
+                  }`}
+                >
+                  <Icon
+                    className={`h-4 w-4 shrink-0 transition-colors ${
+                      isActive ? "text-aqua" : "text-mist/60 group-hover:text-sui"
+                    }`}
+                  />
+                  {sec.label}
+                </a>
+              );
+            })}
+            </div>
           </nav>
         </aside>
 
@@ -335,7 +526,7 @@ export default function DeveloperDocs() {
         <main className="min-w-0 flex-1 space-y-20">
           {/* Getting started */}
           <section id="getting-started" className="scroll-mt-28">
-            <p className="kicker">Getting started</p>
+            <SectionLabel id="getting-started">Getting started</SectionLabel>
             <h1 className="mt-4 font-display text-3xl font-semibold leading-tight sm:text-4xl">
               Ship <span className="text-gradient-blue">pre-execution security</span> in
               one function call.
@@ -350,13 +541,32 @@ export default function DeveloperDocs() {
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               {[
-                { n: "01", t: "Install", d: "Load the extension once, in Chrome 116+." },
-                { n: "02", t: "Integrate", d: "One import, one await, one status check." },
-                { n: "03", t: "Ship", d: "Every transaction reviewed before signature." },
+                {
+                  n: "01",
+                  t: "Install",
+                  d: "Load the extension once, in Chrome 116+.",
+                  i: SECTION_ICONS.install,
+                },
+                {
+                  n: "02",
+                  t: "Integrate",
+                  d: "One import, one await, one status check.",
+                  i: SECTION_ICONS["quick-start"],
+                },
+                { n: "03", t: "Ship", d: "Every transaction reviewed before signature.", i: IconShield },
               ].map((s) => (
-                <div key={s.n} className="glass rounded-xl p-5">
-                  <span className="font-mono text-[11px] tracking-[0.2em] text-sui">{s.n}</span>
-                  <h3 className="mt-2 font-grotesk text-lg font-semibold text-white">{s.t}</h3>
+                <div
+                  key={s.n}
+                  data-doc-card
+                  className="glass group rounded-xl p-5 transition-colors duration-500 hover:border-sui/40"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-sui/25 bg-sui/10 text-sui transition-colors duration-500 group-hover:border-sui/60 group-hover:text-aqua">
+                    <s.i className="h-4.5 w-4.5" />
+                  </span>
+                  <span className="mt-3 block font-mono text-[11px] tracking-[0.2em] text-sui">
+                    {s.n}
+                  </span>
+                  <h3 className="mt-1 font-grotesk text-lg font-semibold text-white">{s.t}</h3>
                   <p className="mt-1.5 text-[13px] leading-relaxed text-mist">{s.d}</p>
                 </div>
               ))}
@@ -381,7 +591,7 @@ export default function DeveloperDocs() {
 
           {/* Install */}
           <section id="install" className="scroll-mt-28">
-            <p className="kicker">Installation</p>
+            <SectionLabel id="install">Installation</SectionLabel>
             <h2 className="mt-3 font-display text-2xl font-semibold sm:text-3xl">
               Install the extension
             </h2>
@@ -394,7 +604,8 @@ export default function DeveloperDocs() {
             <a
               href="/aegis-extension.zip"
               download
-              className="group mt-7 flex items-center justify-between gap-4 rounded-xl border border-sui/50 bg-sui/[0.08] px-6 py-5 transition-all hover:border-aqua hover:bg-sui/[0.14] hover:shadow-[0_0_30px_rgba(77,162,255,0.25)]"
+              data-doc-magnetic
+              className="group mt-7 flex items-center justify-between gap-4 rounded-xl border border-sui/50 bg-sui/[0.08] px-6 py-5 transition-colors hover:border-aqua hover:bg-sui/[0.14] hover:shadow-[0_0_30px_rgba(77,162,255,0.25)]"
             >
               <span className="flex items-center gap-4">
                 <AegisMark className="h-10 w-10" />
@@ -414,7 +625,7 @@ export default function DeveloperDocs() {
 
             <ol className="mt-8 space-y-4">
               {INSTALL_STEPS.map((step, i) => (
-                <li key={step.title} className="flex gap-4">
+                <li key={step.title} data-doc-card className="flex gap-4">
                   <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-sui/40 bg-sui/10 font-mono text-[11px] font-semibold text-aqua">
                     {i + 1}
                   </span>
@@ -436,7 +647,7 @@ export default function DeveloperDocs() {
 
           {/* Quick start */}
           <section id="quick-start" className="scroll-mt-28">
-            <p className="kicker">Quick start</p>
+            <SectionLabel id="quick-start">Quick start</SectionLabel>
             <h2 className="mt-3 font-display text-2xl font-semibold sm:text-3xl">
               Add it to your dApp
             </h2>
@@ -479,7 +690,7 @@ export default function DeveloperDocs() {
 
           {/* Statuses */}
           <section id="statuses" className="scroll-mt-28">
-            <p className="kicker">Result handling</p>
+            <SectionLabel id="statuses">Result handling</SectionLabel>
             <h2 className="mt-3 font-display text-2xl font-semibold sm:text-3xl">
               Handling every status
             </h2>
@@ -533,7 +744,7 @@ export default function DeveloperDocs() {
 
           {/* API */}
           <section id="api" className="scroll-mt-28">
-            <p className="kicker">API reference</p>
+            <SectionLabel id="api">API reference</SectionLabel>
             <h2 className="mt-3 font-display text-2xl font-semibold sm:text-3xl">
               The SDK surface
             </h2>
@@ -612,7 +823,7 @@ export default function DeveloperDocs() {
 
           {/* Detect */}
           <section id="detect" className="scroll-mt-28">
-            <p className="kicker">Detection</p>
+            <SectionLabel id="detect">Detection</SectionLabel>
             <h2 className="mt-3 font-display text-2xl font-semibold sm:text-3xl">
               Detecting the extension
             </h2>
@@ -640,54 +851,9 @@ export default function DeveloperDocs() {
             </div>
           </section>
 
-          {/* How it works */}
-          <section id="how-it-works" className="scroll-mt-28">
-            <p className="kicker">Architecture</p>
-            <h2 className="mt-3 font-display text-2xl font-semibold sm:text-3xl">
-              How it works
-            </h2>
-            <p className="mt-4 max-w-[65ch] text-base leading-relaxed text-mist">
-              Your page never sees the verdict path. The popup fetches the agent
-              itself, so a compromised dApp cannot fake, suppress, or rewrite the
-              analysis the user reads.
-            </p>
-
-            <div className="mt-6 overflow-x-auto rounded-xl border border-line bg-[#040e1c] p-5">
-              <pre className="font-mono text-[11.5px] leading-relaxed text-[#9fc4e8]">
-                <code>{ARCHITECTURE}</code>
-              </pre>
-            </div>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {[
-                {
-                  t: "Zero custody",
-                  d: "AEGIS never holds keys. Approving returns a status to your dApp — your existing wallet still asks the user to sign.",
-                },
-                {
-                  t: "Works on any dApp",
-                  d: "The provider is injected on every matching origin, so the extension protects sites that never integrated it.",
-                },
-                {
-                  t: "The popup owns the network call",
-                  d: "The service worker only routes. The analysis dies with the panel if the user walks away.",
-                },
-                {
-                  t: "No hanging promises",
-                  d: "Clicking away dismisses the panel and resolves as cancelled; a reloaded extension rejects in-flight requests with DISCONNECTED.",
-                },
-              ].map((c) => (
-                <div key={c.t} className="glass rounded-xl p-5">
-                  <h3 className="font-grotesk text-base font-semibold text-white">{c.t}</h3>
-                  <p className="mt-2 text-[13px] leading-relaxed text-mist">{c.d}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
           {/* Agent server */}
           <section id="agent-server" className="scroll-mt-28">
-            <p className="kicker">Backend</p>
+            <SectionLabel id="agent-server">Backend</SectionLabel>
             <h2 className="mt-3 font-display text-2xl font-semibold sm:text-3xl">
               Agent server contract
             </h2>
@@ -715,21 +881,13 @@ export default function DeveloperDocs() {
 
           {/* Troubleshooting */}
           <section id="troubleshooting" className="scroll-mt-28">
-            <p className="kicker">Troubleshooting</p>
+            <SectionLabel id="troubleshooting">Troubleshooting</SectionLabel>
             <h2 className="mt-3 font-display text-2xl font-semibold sm:text-3xl">
               Common problems
             </h2>
             <div className="mt-6 space-y-3">
               {TROUBLESHOOTING.map((item) => (
-                <details key={item.q} className="glass group rounded-xl px-5 py-4">
-                  <summary className="cursor-pointer list-none font-grotesk text-[15px] font-medium text-white marker:content-none">
-                    <span className="mr-2 text-sui">›</span>
-                    {item.q}
-                  </summary>
-                  <p className="mt-3 border-t border-line pt-3 text-[13.5px] leading-relaxed text-mist">
-                    {item.a}
-                  </p>
-                </details>
+                <Faq key={item.q} q={item.q} a={item.a} />
               ))}
             </div>
 
@@ -739,9 +897,12 @@ export default function DeveloperDocs() {
               </p>
               <Link
                 href="/demo-light"
-                className="rounded-full border border-sui/50 px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition-all hover:border-aqua hover:shadow-[0_0_20px_rgba(77,162,255,0.3)]"
+                className="group/cta rounded-full border border-sui/50 px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition-all hover:border-aqua hover:shadow-[0_0_20px_rgba(77,162,255,0.3)]"
               >
-                Open the live demo →
+                <span className="flex items-center gap-2">
+                  Open the live demo
+                  <IconArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover/cta:translate-x-1" />
+                </span>
               </Link>
             </div>
           </section>

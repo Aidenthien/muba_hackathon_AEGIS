@@ -73,12 +73,12 @@ export const SCENARIOS: Scenario[] = [
     label: "DeFi Swap · Cetus",
     blurb: "Swap 0.05 SUI via Cetus router on Sui Testnet. Recognized audited protocol (Approve).",
     executable: true,
-    sponsorable: false,
+    sponsorable: true,
     expected: "approve",
     build: (sender) => {
       const tx = new Transaction();
       tx.setSender(sender);
-      const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(50_000_000n)]);
+      const coin = tx.add(coinWithBalance({ balance: 50_000_000n, useGasCoin: false }));
       const [swapped] = tx.moveCall({
         target: `${CETUS_PACKAGE}::router::swap_exact_input`,
         arguments: [coin],
@@ -92,12 +92,12 @@ export const SCENARIOS: Scenario[] = [
     label: "Complex DeFi Chain",
     blurb: "Multi-step swap + lending + farming across Cetus, NAVI, and Bucket. Medium risk (Caution).",
     executable: true,
-    sponsorable: false,
+    sponsorable: true,
     expected: "caution",
     build: (sender) => {
       const tx = new Transaction();
       tx.setSender(sender);
-      const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(50_000_000n)]);
+      const coin = tx.add(coinWithBalance({ balance: 50_000_000n, useGasCoin: false }));
       const [swapped] = tx.moveCall({
         target: `${CETUS_PACKAGE}::pool::swap_exact_input`,
         arguments: [coin],

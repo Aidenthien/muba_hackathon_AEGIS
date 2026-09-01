@@ -30,7 +30,7 @@ async function runTests() {
 
     // 1. Build the transaction payload exactly as the demo does
     const tx = scenario.build(SENDER);
-    const rawPtb = await tx.toJSON();
+    const rawPtb = await tx.toJSON({ client: suiClient });
 
     // 2. Call AEGIS AI Agent Server
     const t0 = Date.now();

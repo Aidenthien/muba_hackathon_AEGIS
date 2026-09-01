@@ -268,9 +268,9 @@ export default function TransactionLab() {
         }
         payload = await scenario
           .build(account.address, to || account.address, sui, { sponsored: sponsoredRun })
-          .toJSON();
+          .toJSON({ client });
       } else {
-        payload = await scenario.build(account.address).toJSON();
+        payload = await scenario.build(account.address).toJSON({ client });
       }
     } catch (e) {
       setBuildError(e instanceof Error ? e.message : "Could not build the transaction.");

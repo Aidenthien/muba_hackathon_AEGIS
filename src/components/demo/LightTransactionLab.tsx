@@ -246,7 +246,7 @@ export default function LightTransactionLab() {
       const amount = Number(transferAmount) > 0 ? Number(transferAmount) : 0.05;
       payload = await scenario
         .build(account.address, recipient, amount, { sponsored: sponsoredRun })
-        .toJSON();
+        .toJSON({ client });
     } catch (e) {
       setBuildError(e instanceof Error ? e.message : "Could not build the transaction.");
       return;

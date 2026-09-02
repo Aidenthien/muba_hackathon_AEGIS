@@ -168,6 +168,7 @@ Copy `.env.example` to `.env.local` and fill in your [Enoki](https://enoki.myste
 NEXT_PUBLIC_ENOKI_API_KEY=
 NEXT_PUBLIC_ENOKI_GOOGLE_CLIENT_ID=
 ENOKI_PRIVATE_KEY=
+AGENT_SERVER_URL=
 ```
 
 ### 3. Load the browser extension

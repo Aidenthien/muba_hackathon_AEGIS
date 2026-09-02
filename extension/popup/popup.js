@@ -614,6 +614,8 @@ function renderVerdict(analysis) {
     $("tool-recap").hidden = true;
   }
 
+  renderGonkaVerification(analysis.gonkaVerification);
+
   setScreen("verdict");
   setActions({
     primary: copy.cta,
@@ -622,6 +624,130 @@ function renderVerdict(analysis) {
     onPrimary: () => decide(true),
     onSecondary: () => decide(false),
   });
+}
+
+function formatModelDisplayName(model) {
+  if (!model) return "Model";
+  if (model.toLowerCase().includes("deepseek")) return "DeepSeek V4";
+  if (model.toLowerCase().includes("minimax")) return "MiniMax M2.7";
+  if (model.toLowerCase().includes("kimi")) return "Kimi K2.6";
+  const parts = model.split("/");
+  return parts[parts.length - 1] || model;
+}
+
+function formatShortReqId(id) {
+  if (!id) return "req-proof";
+  if (id.startsWith("fallback-")) return "simulated";
+  if (id.length > 18) {
+    return `${id.slice(0, 8)}…${id.slice(-4)}`;
+  }
+  return id;
+}
+
+function renderGonkaVerification(gonka) {
+  const card = $("gonka-card");
+  if (!card) return;
+
+  if (!gonka) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+
+  const truthScore = Number.isFinite(Number(gonka.consensusTruthScore))
+    ? Math.round(Number(gonka.consensusTruthScore))
+    : 75;
+  $("gonka-truth-badge").textContent = `${truthScore}% Truth`;
+
+  const consensusPill = $("gonka-consensus-pill");
+  if (consensusPill) {
+    consensusPill.textContent = gonka.consensusAgreement
+      ? "Dual-Model Verified"
+      : "Reconciled";
+    consensusPill.className = `gonka-consensus-tag${gonka.consensusAgreement ? "" : " conflict"}`;
+  }
+
+  const conflictBox = $("gonka-conflict-box");
+  const conflictText = $("gonka-conflict-text");
+  if (conflictBox && conflictText) {
+    if (!gonka.consensusAgreement && gonka.conflictResolution) {
+      conflictBox.removeAttribute("hidden");
+      conflictText.textContent = gonka.conflictResolution;
+    } else {
+      conflictBox.setAttribute("hidden", "");
+      conflictText.textContent = "";
+    }
+  }
+
+  // Model 1 (Primary)
+  const p = gonka.models?.primary;
+  if (p) {
+    const pName = formatModelDisplayName(p.model);
+    $("primary-model-name").textContent = pName;
+    const pVerdict = $("primary-verdict");
+    if (pVerdict) {
+      pVerdict.textContent = `${p.verdict} · ${p.truthScore}%`;
+      pVerdict.className = `model-badge ${p.verdict}`;
+    }
+    $("primary-req-id").textContent = formatShortReqId(p.requestId);
+
+    const pBtn = $("primary-req-btn");
+    if (pBtn && p.requestId) {
+      pBtn.onclick = () => copyToClipboard(p.requestId, $("primary-copy-icon"), pBtn);
+    }
+
+    $("primary-trace-title").textContent = `${pName} Reasoning Trace`;
+    $("primary-reasoning-body").textContent = p.reasoningTrace || "No trace provided.";
+    fill("primary-evidence-ul", null, p.evidenceCitations || [], (ev) => {
+      const li = document.createElement("li");
+      li.textContent = ev;
+      return li;
+    });
+  }
+
+  // Model 2 (Secondary)
+  const s = gonka.models?.secondary;
+  if (s) {
+    const sName = formatModelDisplayName(s.model);
+    $("secondary-model-name").textContent = sName;
+    const sVerdict = $("secondary-verdict");
+    if (sVerdict) {
+      sVerdict.textContent = `${s.verdict} · ${s.truthScore}%`;
+      sVerdict.className = `model-badge ${s.verdict}`;
+    }
+    $("secondary-req-id").textContent = formatShortReqId(s.requestId);
+
+    const sBtn = $("secondary-req-btn");
+    if (sBtn && s.requestId) {
+      sBtn.onclick = () => copyToClipboard(s.requestId, $("secondary-copy-icon"), sBtn);
+    }
+
+    $("secondary-trace-title").textContent = `${sName} Reasoning Trace`;
+    $("secondary-reasoning-body").textContent = s.reasoningTrace || "No trace provided.";
+    fill("secondary-evidence-ul", null, s.evidenceCitations || [], (ev) => {
+      const li = document.createElement("li");
+      li.textContent = ev;
+      return li;
+    });
+  }
+
+  // Ensure details is collapsed by default
+  const details = $("gonka-traces-details");
+  if (details) details.open = false;
+}
+
+async function copyToClipboard(text, iconEl, btnEl) {
+  try {
+    await navigator.clipboard.writeText(text);
+    if (iconEl) iconEl.textContent = "✓";
+    if (btnEl) btnEl.classList.add("copied");
+    setTimeout(() => {
+      if (iconEl) iconEl.textContent = "📋";
+      if (btnEl) btnEl.classList.remove("copied");
+    }, 1800);
+  } catch (err) {
+    console.error("Clipboard copy failed:", err);
+  }
 }
 
 // ── Error ────────────────────────────────────────────────────────────

@@ -923,3 +923,275 @@ code,
   margin-top: 9px;
   padding: 8px 10px;
 }
+
+/* ── Gonka Dual-Model Verification ─────────────────────────── */
+.gonka-card {
+  position: relative;
+  background: linear-gradient(165deg, rgba(8, 25, 44, 0.95), rgba(11, 33, 56, 0.9));
+  border: 1px solid rgba(111, 247, 255, 0.2);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+  padding: 9px 12px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.gonka-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.gonka-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gonka-glow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--aqua);
+  box-shadow: 0 0 6px var(--aqua);
+  animation: gonka-pulse 2s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+@keyframes gonka-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 10px var(--aqua); }
+}
+
+.gonka-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--aqua);
+  white-space: nowrap;
+}
+
+.gonka-consensus-tag {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(92, 230, 168, 0.15);
+  color: var(--ok);
+  border: 1px solid rgba(92, 230, 168, 0.3);
+  white-space: nowrap;
+}
+
+.gonka-consensus-tag.conflict {
+  background: rgba(255, 200, 97, 0.15);
+  color: var(--warn);
+  border-color: rgba(255, 200, 97, 0.3);
+}
+
+.gonka-truth-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(111, 247, 255, 0.12);
+  color: var(--aqua);
+  border: 1px solid rgba(111, 247, 255, 0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.gonka-conflict-box[hidden] {
+  display: none !important;
+}
+
+.gonka-conflict-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  background: rgba(255, 200, 97, 0.08);
+  border: 1px solid rgba(255, 200, 97, 0.25);
+}
+
+.gonka-conflict-box .conflict-icon {
+  font-size: 11px;
+}
+
+.gonka-conflict-box .conflict-text {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: #ffe6a3;
+}
+
+/* Streamlined Model Rows */
+.gonka-model-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.gonka-model-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background: rgba(4, 16, 32, 0.65);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.gonka-model-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.model-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.model-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.model-badge.approve {
+  background: rgba(92, 230, 168, 0.18);
+  color: var(--ok);
+}
+
+.model-badge.caution {
+  background: rgba(255, 200, 97, 0.18);
+  color: var(--warn);
+}
+
+.model-badge.reject {
+  background: rgba(255, 92, 110, 0.18);
+  color: var(--danger);
+}
+
+.gonka-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: rgba(2, 7, 16, 0.85);
+  border: 1px solid rgba(122, 168, 214, 0.22);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 9.5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  max-width: 135px;
+}
+
+.gonka-chip-btn:hover {
+  background: rgba(77, 162, 255, 0.12);
+  border-color: var(--sui);
+}
+
+.gonka-chip-btn.copied {
+  background: rgba(92, 230, 168, 0.18);
+  border-color: var(--ok);
+}
+
+.chip-hash {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 9.5px;
+  color: var(--aqua);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-copy-icon {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+/* Collapsible Audit Trace */
+.gonka-details {
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 5px;
+}
+
+.gonka-summary {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--mist);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+
+.gonka-summary:hover {
+  color: var(--aqua);
+}
+
+.gonka-trace-content {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.trace-item {
+  background: rgba(2, 7, 16, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 5px 7px;
+}
+
+.trace-item-title {
+  margin: 0 0 3px 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--sui);
+}
+
+.trace-item-body {
+  margin: 0 0 3px 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.trace-evidence-list {
+  margin: 0;
+  padding-left: 14px;
+  list-style-type: disc;
+}
+
+.trace-evidence-list li {
+  font-size: 9.5px;
+  color: var(--mist);
+  margin-bottom: 2px;
+}
+
+

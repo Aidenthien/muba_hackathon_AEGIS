@@ -129,6 +129,67 @@
           <p class="verdict-text" id="verdict-explanation">—</p>
         </div>
 
+        <!-- ── Gonka Dual-Model Verification ── -->
+        <div class="card gonka-card" id="gonka-card" hidden>
+          <div class="gonka-head">
+            <div class="gonka-badge-group">
+              <span class="gonka-glow-dot"></span>
+              <span class="gonka-title">Gonka Consensus</span>
+              <span class="gonka-consensus-tag" id="gonka-consensus-pill">Dual-Model Verified</span>
+            </div>
+            <span class="gonka-truth-badge" id="gonka-truth-badge">—% Truth</span>
+          </div>
+
+          <div class="gonka-conflict-box" id="gonka-conflict-box" hidden>
+            <span class="conflict-icon">⚠️</span>
+            <p class="conflict-text" id="gonka-conflict-text"></p>
+          </div>
+
+          <!-- Streamlined Model Rows -->
+          <div class="gonka-model-rows">
+            <!-- Primary Model -->
+            <div class="gonka-model-row" id="model-row-primary">
+              <div class="gonka-model-info">
+                <span class="model-name" id="primary-model-name">DeepSeek V4</span>
+                <span class="model-badge" id="primary-verdict">—</span>
+              </div>
+              <button type="button" class="gonka-chip-btn" id="primary-req-btn" title="Click to copy on-chain Gonka Request ID">
+                <span class="chip-hash" id="primary-req-id">—</span>
+                <span class="chip-copy-icon" id="primary-copy-icon">📋</span>
+              </button>
+            </div>
+
+            <!-- Secondary Model -->
+            <div class="gonka-model-row" id="model-row-secondary">
+              <div class="gonka-model-info">
+                <span class="model-name" id="secondary-model-name">MiniMax M2.7</span>
+                <span class="model-badge" id="secondary-verdict">—</span>
+              </div>
+              <button type="button" class="gonka-chip-btn" id="secondary-req-btn" title="Click to copy on-chain Gonka Request ID">
+                <span class="chip-hash" id="secondary-req-id">—</span>
+                <span class="chip-copy-icon" id="secondary-copy-icon">📋</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Clean Collapsible Audit Trace -->
+          <details class="gonka-details" id="gonka-traces-details">
+            <summary class="gonka-summary">View Detailed Reasoning Trace</summary>
+            <div class="gonka-trace-content">
+              <div class="trace-item">
+                <p class="trace-item-title" id="primary-trace-title">DeepSeek V4 Reasoning Trace</p>
+                <p class="trace-item-body" id="primary-reasoning-body">—</p>
+                <ul class="trace-evidence-list" id="primary-evidence-ul"></ul>
+              </div>
+              <div class="trace-item">
+                <p class="trace-item-title" id="secondary-trace-title">MiniMax M2.7 Reasoning Trace</p>
+                <p class="trace-item-body" id="secondary-reasoning-body">—</p>
+                <ul class="trace-evidence-list" id="secondary-evidence-ul"></ul>
+              </div>
+            </div>
+          </details>
+        </div>
+
         <div class="card" id="flags-card" hidden>
           <p class="card-label danger">Risk flags</p>
           <ul class="flags" id="flags-list"></ul>

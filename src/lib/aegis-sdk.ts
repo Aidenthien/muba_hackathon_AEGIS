@@ -49,6 +49,9 @@ export interface AgentAnalysis {
   planReasoning?: string;
   planSource?: string;
   similarPatterns?: SimilarPattern[];
+  gonkaVerification?: any;
+  walrusBlobId?: string;
+  walrusUrl?: string;
 }
 
 // ── SDK surface ──────────────────────────────────────────────────────

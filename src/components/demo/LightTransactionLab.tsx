@@ -16,6 +16,7 @@ import InstallPrompt from "@/components/aegis/InstallPrompt";
 import { SponsorError, signAndExecuteSponsored } from "@/lib/sponsor";
 
 import { MIST_PER_SUI, SCENARIOS, formatBalanceChange, shortAddress } from "./scenarios";
+import WalrusAuditDashboard from "./WalrusAuditDashboard";
 
 const EXTERNAL_TEST_WALLET =
   "0xcca26f7ae2e40604498294e95bacccc4652cc8cb2aa074d7ee608c7e7bdf0c29";
@@ -659,6 +660,27 @@ export default function LightTransactionLab() {
                   </div>
                 </div>
               ) : null}
+
+              {outcome.analysis.walrusBlobId && (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-black/10 pt-4">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm">🦭</span>
+                    <span className="font-mono text-xs font-bold uppercase tracking-wider text-slate-600">
+                      Walrus Audit Dossier
+                    </span>
+                  </div>
+                  <a
+                    href={`https://aggregator.walrus-testnet.walrus.space/v1/blobs/${outcome.analysis.walrusBlobId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-600/30 bg-cyan-50 px-3 py-1 font-mono text-xs font-bold text-cyan-800 hover:bg-cyan-100"
+                    title="View verified JSON dossier on Walrus Aggregator"
+                  >
+                    <span>blob-{outcome.analysis.walrusBlobId.slice(0, 7)}…{outcome.analysis.walrusBlobId.slice(-4)}</span>
+                    <span className="text-[10px]">↗</span>
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -707,6 +729,12 @@ export default function LightTransactionLab() {
           )}
         </div>
       </div>
+
+      {/* ── Walrus Decentralized Audit History Dashboard ── */}
+      <WalrusAuditDashboard
+        walletAddress={account?.address}
+        latestBlobId={outcome?.analysis?.walrusBlobId}
+      />
     </>
   );
 }

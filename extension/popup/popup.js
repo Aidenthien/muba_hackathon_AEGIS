@@ -7,7 +7,8 @@
  */
 import { summarizeTransaction, formatSui, shortAddress } from "../lib/ptb.js";
 
-const DEFAULT_AGENT_URL = "http://localhost:3001";
+const DEFAULT_AGENT_URL = "https://aegis-ai-agent-production.up.railway.app";
+// const DEFAULT_AGENT_URL = "http://localhost:3001";
 const AGENT_URL_KEY = "agentServerUrl";
 
 const TOOL_ICONS = {
@@ -18,6 +19,8 @@ const TOOL_ICONS = {
   fetch_history: "📜",
   vector_search: "🔍",
   score_risk: "🛡️",
+  gonka_verification: "⚡",
+  walrus_storage: "🦭",
 };
 
 const VERDICT_COPY = {
@@ -63,7 +66,15 @@ async function getAgentUrl() {
   try {
     const stored = await chrome.storage.local.get(AGENT_URL_KEY);
     const url = stored[AGENT_URL_KEY];
-    if (typeof url === "string" && url.trim()) return url.trim().replace(/\/+$/, "");
+    if (typeof url === "string" && url.trim()) {
+      const clean = url.trim().replace(/\/+$/, "");
+      // Auto-migrate from the legacy default localhost to the production agent URL
+      if (clean === "http://localhost:3001" || clean === "http://127.0.0.1:3001") {
+        await chrome.storage.local.set({ [AGENT_URL_KEY]: DEFAULT_AGENT_URL });
+        return DEFAULT_AGENT_URL;
+      }
+      return clean;
+    }
   } catch {
     // storage unavailable; fall through to the default
   }
@@ -614,7 +625,7 @@ function renderVerdict(analysis) {
     $("tool-recap").hidden = true;
   }
 
-  renderGonkaVerification(analysis.gonkaVerification);
+  renderGonkaVerification(analysis.gonkaVerification, analysis);
 
   setScreen("verdict");
   setActions({
@@ -644,7 +655,7 @@ function formatShortReqId(id) {
   return id;
 }
 
-function renderGonkaVerification(gonka) {
+function renderGonkaVerification(gonka, analysis) {
   const card = $("gonka-card");
   if (!card) return;
 
@@ -729,6 +740,24 @@ function renderGonkaVerification(gonka) {
       li.textContent = ev;
       return li;
     });
+  }
+
+  // Walrus Decentralized Audit Dossier Proof
+  const walrusRow = $("walrus-proof-row");
+  const walrusBlobId = $("walrus-blob-id");
+  const walrusLink = $("walrus-blob-link");
+  if (walrusRow && walrusBlobId && walrusLink) {
+    if (analysis?.walrusBlobId) {
+      walrusRow.removeAttribute("hidden");
+      const shortBlob = analysis.walrusBlobId.length > 18
+        ? `blob-${analysis.walrusBlobId.slice(0, 7)}…${analysis.walrusBlobId.slice(-4)}`
+        : analysis.walrusBlobId;
+      walrusBlobId.textContent = shortBlob;
+      walrusLink.href = `https://aggregator.walrus-testnet.walrus.space/v1/blobs/${analysis.walrusBlobId}`;
+      walrusLink.title = "View raw verified audit dossier on Walrus Aggregator";
+    } else {
+      walrusRow.setAttribute("hidden", "");
+    }
   }
 
   // Ensure details is collapsed by default

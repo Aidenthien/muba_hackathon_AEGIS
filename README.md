@@ -245,7 +245,3 @@ src/components/        Marketing site sections, demo app, developer docs, 3D sce
 src/lib/                aegis-sdk.ts (dApp SDK), Enoki/sponsor helpers, dApp-kit config
 scripts/                Scenario test runner, extension packer
 ```
-
-## 📄 License
-
-*(to be completed)*

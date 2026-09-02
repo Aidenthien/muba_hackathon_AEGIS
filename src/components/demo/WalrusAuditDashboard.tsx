@@ -26,7 +26,8 @@ export default function WalrusAuditDashboard({
   walletAddress,
   agentUrl = process.env.AGENT_SERVER_URL || "http://localhost:3001",
   latestBlobId,
-}: WalrusAuditDashboardProps) {
+  className = "mt-8",
+}: WalrusAuditDashboardProps & { className?: string }) {
   const [audits, setAudits] = useState<WalrusAuditItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedAudit, setSelectedAudit] = useState<WalrusAuditItem | null>(null);
@@ -105,7 +106,9 @@ export default function WalrusAuditDashboard({
   const rejectedCount = audits.filter((a) => a.recommendation === "reject").length;
 
   return (
-    <div className="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 shadow-2xl">
+    <div
+      className={`overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 shadow-2xl ${className}`}
+    >
       {/* ── Top Header ── */}
       <div className="flex flex-wrap items-center justify-between border-b border-slate-800 bg-slate-900/80 px-6 py-4">
         <div className="flex items-center gap-3">

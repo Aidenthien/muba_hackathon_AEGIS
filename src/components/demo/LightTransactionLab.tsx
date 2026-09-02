@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import gsap from "gsap";
 import {
   useCurrentAccount,
   useCurrentClient,
@@ -100,6 +101,10 @@ export default function LightTransactionLab() {
   const [extensionChecked, setExtensionChecked] = useState(false);
   const [balance, setBalance] = useState<bigint | null>(null);
   const [sponsorAvailable, setSponsorAvailable] = useState(false);
+  const [walrusOpen, setWalrusOpen] = useState(false);
+  const walrusOverlay = useRef<HTMLDivElement>(null);
+  const walrusPanel = useRef<HTMLDivElement>(null);
+  const walrusCtx = useRef<gsap.Context | null>(null);
 
   const scenario = SCENARIOS.find((s) => s.id === selected) ?? SCENARIOS[0];
   const isTransfer = selected === "safe-transfer";
@@ -163,6 +168,82 @@ export default function LightTransactionLab() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.address, network]);
+
+  useEffect(() => {
+    if (!walrusOpen) return;
+    const overlay = walrusOverlay.current;
+    const panel = walrusPanel.current;
+    if (!overlay || !panel) return;
+
+    const ctx = gsap.context(() => {});
+    walrusCtx.current = ctx;
+
+    ctx.add(() => {
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: reduce)", () => {
+        // Asked for less motion: appear, don't animate.
+        gsap.set([overlay, panel], { autoAlpha: 1, y: 0, scale: 1 });
+      });
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap
+          .timeline()
+          .fromTo(overlay, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.22, ease: "power2.out" })
+          .fromTo(
+            panel,
+            { autoAlpha: 0, y: 28, scale: 0.96 },
+            { autoAlpha: 1, y: 0, scale: 1, duration: 0.42, ease: "power3.out" },
+            // Overlaps the fade so the card is already rising as the scrim
+            // lands, rather than waiting for it.
+            "-=0.12"
+          );
+      });
+    });
+
+    return () => {
+      ctx.revert();
+      walrusCtx.current = null;
+    };
+  }, [walrusOpen]);
+
+  /** Plays the popup out, then unmounts it. */
+  const closeWalrus = useCallback(() => {
+    const overlay = walrusOverlay.current;
+    const panel = walrusPanel.current;
+    const ctx = walrusCtx.current;
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (!overlay || !panel || !ctx || reduced) {
+      setWalrusOpen(false);
+      return;
+    }
+
+    // ctx.add keeps this timeline inside the popup's context, so an unmount
+    // mid-flight reverts it instead of leaving a tween running on a dead node.
+    ctx.add(() => {
+      gsap
+        .timeline({ onComplete: () => setWalrusOpen(false) })
+        // Out is faster than in: dismissal should feel immediate.
+        .to(panel, { autoAlpha: 0, y: 14, scale: 0.98, duration: 0.2, ease: "power2.in" })
+        .to(overlay, { autoAlpha: 0, duration: 0.16, ease: "power1.in" }, "-=0.1");
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!walrusOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeWalrus();
+    };
+    window.addEventListener("keydown", onKey);
+    // Without this the page scrolls behind the popup on wheel/trackpad.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [walrusOpen, closeWalrus]);
 
   function reset() {
     setOutcome(null);
@@ -341,6 +422,37 @@ export default function LightTransactionLab() {
               </div>
               <ConnectButton />
             </div>
+
+            <button
+              type="button"
+              onClick={() => setWalrusOpen(true)}
+              aria-expanded={walrusOpen}
+              className="group mt-4 flex w-full cursor-pointer items-center justify-between gap-3 border-t border-slate-100 pt-4 text-left"
+            >
+              <span className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-cyan-300 bg-cyan-50 text-xs">
+                  🦭
+                </span>
+                <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500 transition-colors group-hover:text-slate-700">
+                  Walrus Audit Trail
+                </span>
+              </span>
+              <span className="flex items-center gap-1.5 font-mono text-xs font-bold text-blue-600 transition-colors group-hover:text-blue-800">
+                View
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+                >
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </span>
+            </button>
 
             <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
               <p className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
@@ -730,11 +842,57 @@ export default function LightTransactionLab() {
         </div>
       </div>
 
-      {/* ── Walrus Decentralized Audit History Dashboard ── */}
-      <WalrusAuditDashboard
-        walletAddress={account?.address}
-        latestBlobId={outcome?.analysis?.walrusBlobId}
-      />
+      {walrusOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Walrus decentralized audit trail"
+          ref={walrusOverlay}
+          onClick={closeWalrus}
+          // opacity-0 until GSAP takes over, so there is no un-animated frame
+          // between mount and the first tween.
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/60 p-4 opacity-0 backdrop-blur-sm sm:p-8"
+        >
+          <div
+            ref={walrusPanel}
+            // Clicks inside the panel must not reach the backdrop's close.
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-5xl opacity-0"
+          >
+            {/* In its own bar above the card, not absolutely positioned over
+                it — the dashboard header already has a Refresh button at that
+                exact corner and the two were overlapping. */}
+            <div className="mb-3 flex justify-end">
+              <button
+                type="button"
+                onClick={closeWalrus}
+                aria-label="Close audit trail"
+                className="flex items-center gap-2 rounded-full border border-slate-600 bg-slate-800/90 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wider text-slate-200 transition-colors hover:border-slate-400 hover:bg-slate-700 hover:text-white"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+                Close
+              </button>
+            </div>
+            <WalrusAuditDashboard
+              walletAddress={account?.address}
+              latestBlobId={outcome?.analysis?.walrusBlobId}
+              className="mt-0"
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }

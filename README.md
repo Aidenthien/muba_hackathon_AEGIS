@@ -9,7 +9,6 @@
 ![Chrome Extension](https://img.shields.io/badge/Chrome-MV3_Extension-4285F4?logo=googlechrome&logoColor=white)
 ![Enoki zkLogin](https://img.shields.io/badge/Enoki-zkLogin_%2B_Sponsored_Gas-6fbcf0)
 ![Status](https://img.shields.io/badge/status-hackathon_build-orange)
-![License](https://img.shields.io/badge/license-TBD-lightgrey)
 
 AEGIS simulates every Sui transaction *before* it is signed — dry-running the exact Programmable Transaction Block (PTB) against live chain state, scoring the risk, and handing the wallet a plain-language verdict (**approve / caution / reject**) inside a real Chrome MV3 extension. No custody, no admin keys, no privileged contract access — AEGIS never holds funds or capabilities, so there is nothing for an attacker to steal or hijack.
 

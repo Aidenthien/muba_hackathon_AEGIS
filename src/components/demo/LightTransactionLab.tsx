@@ -520,23 +520,7 @@ export default function LightTransactionLab() {
               )}
             </div>
           </section>
-
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            {/* ── MUBA Hackathon Track Banner ── */}
-            <div className="mb-5 rounded-xl border border-indigo-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-sky-50 p-4 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-white">
-                  <span>🛡️</span> MUBA Track: Stablecoins & DeFi
-                </span>
-                <span className="rounded border border-indigo-200 bg-white/90 px-2 py-0.5 font-mono text-[10px] font-bold text-indigo-700">
-                  Sui Testnet
-                </span>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-slate-700">
-                Pre-execution security oracle for the Sui stablecoin ecosystem: Simulating and risk-scoring gasless USDC payments, Cetus DEX swaps, and Bucket Protocol ($BUCK) CDP operations before user signature.
-              </p>
-            </div>
-
             <span className="mb-4 inline-block rounded-full bg-blue-50 px-3 py-1 font-mono text-xs font-bold uppercase tracking-wider text-blue-700">
               Step 2 — Choose a Scenario
             </span>

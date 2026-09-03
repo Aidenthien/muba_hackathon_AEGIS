@@ -7,8 +7,8 @@
  */
 import { summarizeTransaction, formatSui, shortAddress } from "../lib/ptb.js";
 
-//const DEFAULT_AGENT_URL = "https://aegis-ai-agent-production.up.railway.app";
-const DEFAULT_AGENT_URL = "http://localhost:3001";
+const DEFAULT_AGENT_URL = "https://aegis-ai-agent-production.up.railway.app";
+//const DEFAULT_AGENT_URL = "http://localhost:3001";
 const AGENT_URL_KEY = "agentServerUrl";
 
 const TOOL_ICONS = {

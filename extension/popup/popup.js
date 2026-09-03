@@ -55,6 +55,19 @@ function holdPort(requestId) {
   try {
     state.port = chrome.runtime.connect({ name: "aegis-popup" });
     state.port.postMessage({ requestId });
+
+    // Keep service worker alive while popup is open and streaming
+    const hb = setInterval(() => {
+      if (state.decided || !state.port) {
+        clearInterval(hb);
+        return;
+      }
+      try {
+        state.port.postMessage({ __heartbeat: true });
+      } catch {
+        clearInterval(hb);
+      }
+    }, 8000);
   } catch {
     // Worker unavailable; the request will time out on the page side instead.
   }
@@ -128,6 +141,18 @@ async function decide(approved) {
   if (state.abort) state.abort.abort();
 
   if (state.requestId) {
+    if (state.port) {
+      try {
+        state.port.postMessage({
+          type: "AEGIS_POPUP_DECISION",
+          requestId: state.requestId,
+          approved,
+          analysis: state.analysis,
+        });
+      } catch {
+        // Port closed; fallback to sendMessage below
+      }
+    }
     try {
       await chrome.runtime.sendMessage({
         type: "AEGIS_POPUP_DECISION",

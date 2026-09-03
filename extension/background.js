@@ -33,6 +33,17 @@ function updateBadge() {
   chrome.action.setBadgeBackgroundColor({ color: "#4da2ff" });
 }
 
+// Keep-alive heartbeat while any confirmations are pending so MV3 doesn't kill the worker
+setInterval(() => {
+  if (requests.size > 0) {
+    for (const req of requests.values()) {
+      try {
+        req.port.postMessage({ __heartbeat: true });
+      } catch {}
+    }
+  }
+}, 8000);
+
 function settle(requestId, result, error) {
   const req = requests.get(requestId);
   if (!req || req.settled) return;
@@ -100,7 +111,16 @@ chrome.runtime.onConnect.addListener((port) => {
     // The confirmation surface itself. Its disconnect is how we learn the
     // panel closed — anchored panels get no windows.onRemoved event.
     port.onMessage.addListener((msg) => {
-      if (msg && msg.requestId) popupPorts.set(port, msg.requestId);
+      if (!msg) return;
+      if (msg.requestId) popupPorts.set(port, msg.requestId);
+      if (msg.type === "AEGIS_POPUP_DECISION" && msg.requestId) {
+        popupPorts.delete(port);
+        settle(msg.requestId, {
+          status: msg.approved ? "approved" : "rejected",
+          analysis: msg.analysis ?? null,
+          requestId: msg.requestId,
+        });
+      }
     });
     port.onDisconnect.addListener(() => {
       const requestId = popupPorts.get(port);
@@ -115,7 +135,9 @@ chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== "aegis-page") return;
 
   port.onMessage.addListener(async (msg) => {
-    if (!msg || !msg.id) return;
+    if (!msg) return;
+    if (msg.__heartbeat) return;
+    if (!msg.id) return;
 
     if (msg.method === "ping") {
       port.postMessage({
@@ -222,6 +244,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   if (msg.type === "AEGIS_POPUP_DECISION") {
+    for (const [p, reqId] of popupPorts.entries()) {
+      if (reqId === msg.requestId) popupPorts.delete(p);
+    }
     settle(msg.requestId, {
       status: msg.approved ? "approved" : "rejected",
       analysis: msg.analysis ?? null,

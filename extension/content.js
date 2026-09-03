@@ -37,7 +37,9 @@
     }
 
     port.onMessage.addListener((msg) => {
-      if (!msg || !msg.id) return;
+      if (!msg) return;
+      if (msg.__heartbeat) return;
+      if (!msg.id) return;
       inflight.delete(msg.id);
       toPage({ id: msg.id, result: msg.result, error: msg.error });
     });
@@ -52,6 +54,15 @@
 
     return port;
   }
+
+  // Periodic heartbeat from content script to keep service worker alive during long Gonka analysis
+  setInterval(() => {
+    if (inflight.size > 0 && port) {
+      try {
+        port.postMessage({ __heartbeat: true });
+      } catch {}
+    }
+  }, 8000);
 
   window.addEventListener("message", (event) => {
     if (event.source !== window) return;

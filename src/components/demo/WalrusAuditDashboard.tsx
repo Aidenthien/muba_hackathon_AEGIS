@@ -24,7 +24,7 @@ interface WalrusAuditDashboardProps {
 
 export default function WalrusAuditDashboard({
   walletAddress,
-  agentUrl = process.env.AGENT_SERVER_URL || "http://localhost:3001",
+  agentUrl = process.env.NEXT_PUBLIC_AGENT_SERVER_URL || "http://localhost:3001",
   latestBlobId,
   className = "mt-8",
 }: WalrusAuditDashboardProps & { className?: string }) {

@@ -851,13 +851,13 @@ export default function LightTransactionLab() {
           onClick={closeWalrus}
           // opacity-0 until GSAP takes over, so there is no un-animated frame
           // between mount and the first tween.
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/60 p-4 opacity-0 backdrop-blur-sm sm:p-8"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 opacity-0 backdrop-blur-sm sm:p-8"
         >
           <div
             ref={walrusPanel}
             // Clicks inside the panel must not reach the backdrop's close.
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-5xl opacity-0"
+            className="relative my-auto w-full max-w-5xl opacity-0"
           >
             {/* In its own bar above the card, not absolutely positioned over
                 it — the dashboard header already has a Refresh button at that

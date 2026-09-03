@@ -697,12 +697,28 @@ code,
   font-family: ui-monospace, monospace;
   font-size: 12px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .balances li.neg {
   color: var(--danger);
 }
 .balances li.pos {
+  color: var(--aqua);
+}
+
+.sponsored-tag {
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(111, 247, 255, 0.12);
+  border: 1px solid rgba(111, 247, 255, 0.3);
   color: var(--aqua);
 }
 

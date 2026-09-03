@@ -456,7 +456,7 @@ function scrollToBottom() {
   }
 }
 
-async function typewriteText(element, fullText, speed = 14) {
+async function typewriteText(element, fullText, speed = 8) {
   if (!element || !fullText) return;
   element.textContent = "";
   const cursor = document.createElement("span");
@@ -513,11 +513,11 @@ async function processQueue() {
       const node = $(`tool-node-${call.tool}`);
       const thoughtEl = node?.querySelector(".react-thought .react-text");
       if (thoughtEl && call.thought) {
-        await typewriteText(thoughtEl, call.thought, 14);
+        await typewriteText(thoughtEl, call.thought, 8);
         call.renderedThought = call.thought;
       }
       scrollToBottom();
-      await sleep(350);
+      await sleep(200);
     } else if (event.type === "tool_end") {
       let call = state.toolCalls.find((t) => t.tool === event.tool);
       if (call) {
@@ -536,25 +536,25 @@ async function processQueue() {
         const node = $(`tool-node-${call.tool}`);
         const obsEl = node?.querySelector(".react-observation .react-text");
         if (obsEl && call.observation) {
-          await typewriteText(obsEl, call.observation, 14);
+          await typewriteText(obsEl, call.observation, 8);
           call.renderedObservation = call.observation;
         }
         scrollToBottom();
 
-        // Auto-collapse after ~500ms so it stays clean and compact
-        await sleep(500);
+        // Balanced collapse pause so user can read the observation
+        await sleep(300);
         setToolExpanded(call.tool, false);
-        await sleep(150);
+        await sleep(100);
       }
     } else if (event.type === "thought") {
       renderThought(event.text, event.source);
       const textEl = $("thought-text");
       if (textEl && event.text) {
-        await typewriteText(textEl, event.text, 14);
+        await typewriteText(textEl, event.text, 8);
       }
     } else if (event.type === "result") {
       stopLiveTimer();
-      await sleep(800);
+      await sleep(400);
       if (event.data) renderVerdict(event.data);
     }
   }
@@ -568,17 +568,31 @@ function isSuiCoin(coinType) {
   return /^0x0*2::sui::SUI$/i.test(coinType) || coinType === "SUI";
 }
 
+function getTokenDecimals(symbol) {
+  const sym = (symbol || "").toUpperCase();
+  if (sym === "SUI") return 9;
+  if (sym.includes("USDC") || sym.includes("USDT")) return 6;
+  if (sym.includes("WBTC") || sym.includes("BTC")) return 8;
+  if (sym.includes("WETH") || sym.includes("ETH")) return 8;
+  return 0;
+}
+
 function formatBalanceChange(amount, coinType) {
   const value = Number(amount);
   const sign = value > 0 ? "+" : "";
-  if (isSuiCoin(coinType)) {
-    return `${sign}${(value / 1e9).toLocaleString(undefined, {
+  const parts = String(coinType || "").split("::");
+  const symbol = parts[parts.length - 1] || coinType;
+  const decimals = isSuiCoin(coinType) ? 9 : getTokenDecimals(symbol);
+
+  if (decimals > 0) {
+    const formatted = (value / Math.pow(10, decimals)).toLocaleString(undefined, {
       minimumFractionDigits: 2,
-      maximumFractionDigits: 6,
-    })} SUI`;
+      maximumFractionDigits: decimals,
+    });
+    return `${sign}${formatted} ${symbol}`;
   }
-  const parts = String(coinType).split("::");
-  return `${sign}${value.toLocaleString()} ${parts[parts.length - 1] ?? coinType}`;
+
+  return `${sign}${value.toLocaleString()} ${symbol}`;
 }
 
 function fill(listId, cardId, items, build) {
@@ -624,7 +638,18 @@ function renderVerdict(analysis) {
   fill("balance-list", "balance-card", changes, (b) => {
     const li = document.createElement("li");
     li.className = Number(b.amount) < 0 ? "neg" : "pos";
-    li.textContent = formatBalanceChange(b.amount, b.coinType);
+
+    const textSpan = document.createElement("span");
+    textSpan.textContent = formatBalanceChange(b.amount, b.coinType);
+    li.appendChild(textSpan);
+
+    if (isSuiCoin(b.coinType)) {
+      const tag = document.createElement("span");
+      tag.className = "sponsored-tag";
+      tag.textContent = "sponsored";
+      li.appendChild(tag);
+    }
+
     return li;
   });
 

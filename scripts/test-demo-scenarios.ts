@@ -7,7 +7,7 @@ import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { SCENARIOS } from "../src/components/demo/scenarios";
 
 const SENDER = "0xffae7e430e5cca75a00b23169f4a39cb43721fd1bad89fa3b3e1e01b12db2fe5";
-const AGENT_URL = process.env.AGENT_URL ?? "http://localhost:3001";
+const AGENT_SERVER_URL = process.env.AGENT_SERVER_URL ?? "http://localhost:3001";
 const suiClient = new SuiGrpcClient({
   network: "testnet",
   baseUrl: "https://fullnode.testnet.sui.io:443",
@@ -18,7 +18,7 @@ async function runTests() {
   console.log("🧪 Testing Demo & Demo-Light Scenarios (Live Testnet Contracts)");
   console.log("===============================================================\n");
   console.log(`Target Wallet : ${SENDER}`);
-  console.log(`Agent Server  : ${AGENT_URL}\n`);
+  console.log(`Agent Server  : ${AGENT_SERVER_URL}\n`);
 
   let allPassed = true;
 
@@ -36,7 +36,7 @@ async function runTests() {
     const t0 = Date.now();
     let agentRes;
     try {
-      const res = await fetch(`${AGENT_URL}/analyze`, {
+      const res = await fetch(`${AGENT_SERVER_URL}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rawPtb, walletAddress: SENDER }),

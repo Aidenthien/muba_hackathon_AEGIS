@@ -531,12 +531,12 @@ export default function LightTransactionLab() {
             <div className="space-y-3">
               {SCENARIOS.map((s) => {
                 const active = selected === s.id;
-                const badge =
-                  s.expected === "approve"
-                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                    : s.expected === "caution"
-                      ? "bg-amber-100 text-amber-800 border-amber-300"
-                      : "bg-red-100 text-red-800 border-red-300";
+                // const badge =
+                //   s.expected === "approve"
+                //     ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                //     : s.expected === "caution"
+                //       ? "bg-amber-100 text-amber-800 border-amber-300"
+                //       : "bg-red-100 text-red-800 border-red-300";
 
                 return (
                   <button
@@ -558,11 +558,11 @@ export default function LightTransactionLab() {
                           </span>
                         )}
                       </div>
-                      <span
+                      {/* <span
                         className={`rounded border px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider ${badge}`}
                       >
                         Expected: {s.expected}
-                      </span>
+                      </span> */}
                     </div>
                     <p className="text-sm leading-snug text-slate-600">{s.blurb}</p>
                   </button>
@@ -580,9 +580,9 @@ export default function LightTransactionLab() {
                     >
                       🎯 Target Recipient Wallet Address
                     </label>
-                    <span className="font-mono text-[11px] font-semibold text-blue-700">
+                    {/* <span className="font-mono text-[11px] font-semibold text-blue-700">
                       (Agent inspects target history)
-                    </span>
+                    </span> */}
                   </div>
                   <input
                     id="aegis-recipient"
@@ -660,11 +660,11 @@ export default function LightTransactionLab() {
                       </div>
                     </button>
                   </div>
-                  {transferToken === "USDC" && (
+                  {/* {transferToken === "USDC" && (
                     <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 font-mono text-[11px] font-semibold text-emerald-800">
                       ✓ Circle Testnet USDC · 100% Gasless via Enoki sponsorship
                     </p>
-                  )}
+                  )} */}
                 </div>
 
                 <div className="space-y-2 border-t border-blue-200/60 pt-2">

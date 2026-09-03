@@ -77,6 +77,8 @@ export interface AegisAnalyzeParams {
   network?: string;
   /** Optional human label shown in the popup, e.g. "Swap 1 SUI on Cetus". */
   label?: string;
+  /** Optional token symbol, e.g. "USDC" or "SUI". Defaults to "SUI". */
+  token?: string;
 }
 
 export interface AegisResult {

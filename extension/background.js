@@ -89,18 +89,10 @@ async function openConfirmationWindow(requestId) {
 }
 
 /**
- * Prefers the anchored panel; falls back to a window. The panel carries no
- * requestId in its URL, so the popup asks for whatever is pending instead.
+ * Opens a dedicated top-right popup window (like a wallet).
+ * Standalone windows do NOT dismiss when the user switches tabs or clicks outside.
  */
 async function presentConfirmation(requestId) {
-  if (typeof chrome.action?.openPopup === "function") {
-    try {
-      await chrome.action.openPopup();
-      return { mode: "panel", windowId: null };
-    } catch {
-      // Chrome < 127, no focused window, or the browser refused — use a window.
-    }
-  }
   const windowId = await openConfirmationWindow(requestId);
   return { mode: "window", windowId };
 }

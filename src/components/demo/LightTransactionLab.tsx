@@ -16,7 +16,7 @@ import { aegis, type AegisResult } from "@/lib/aegis-sdk";
 import InstallPrompt from "@/components/aegis/InstallPrompt";
 import { SponsorError, signAndExecuteSponsored } from "@/lib/sponsor";
 
-import { MIST_PER_SUI, SCENARIOS, formatBalanceChange, shortAddress } from "./scenarios";
+import { MIST_PER_SUI, SCENARIOS, USDC_TESTNET_TYPE, formatBalanceChange, shortAddress } from "./scenarios";
 import WalrusAuditDashboard from "./WalrusAuditDashboard";
 
 const EXTERNAL_TEST_WALLET =
@@ -88,6 +88,7 @@ export default function LightTransactionLab() {
   const [selected, setSelected] = useState<string>(SCENARIOS[0].id);
   const [targetRecipient, setTargetRecipient] = useState("");
   const [transferAmount, setTransferAmount] = useState("0.05");
+  const [transferToken, setTransferToken] = useState<"SUI" | "USDC">("SUI");
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [outcome, setOutcome] = useState<AegisResult | null>(null);
@@ -100,6 +101,7 @@ export default function LightTransactionLab() {
   const [extensionVersion, setExtensionVersion] = useState<string | null>(null);
   const [extensionChecked, setExtensionChecked] = useState(false);
   const [balance, setBalance] = useState<bigint | null>(null);
+  const [usdcBalance, setUsdcBalance] = useState<bigint | null>(null);
   const [sponsorAvailable, setSponsorAvailable] = useState(false);
   const [walrusOpen, setWalrusOpen] = useState(false);
   const walrusOverlay = useRef<HTMLDivElement>(null);
@@ -142,10 +144,19 @@ export default function LightTransactionLab() {
   async function refreshBalance(): Promise<void> {
     if (!account) return;
     try {
-      const { balance: b } = await client.core.getBalance({ owner: account.address });
-      setBalance(BigInt(b.balance));
+      const { balances } = await client.core.listBalances({ owner: account.address });
+      const sui = balances.find(
+        (b) => /^0x0*2::sui::SUI$/i.test(b.coinType) || b.coinType === "SUI"
+      );
+      const usdc = balances.find((b) => /usdc/i.test(b.coinType));
+      if (sui) setBalance(BigInt(sui.balance));
+      setUsdcBalance(usdc ? BigInt(usdc.balance) : 0n);
     } catch {
-      // non-fatal; the display just stays as it was
+      // non-fatal; fallback to single queries
+      try {
+        const { balance: b } = await client.core.getBalance({ owner: account.address });
+        setBalance(BigInt(b.balance));
+      } catch {}
     }
   }
 
@@ -157,10 +168,20 @@ export default function LightTransactionLab() {
     let cancelled = false;
     (async () => {
       try {
-        const { balance: b } = await client.core.getBalance({ owner });
-        if (!cancelled) setBalance(BigInt(b.balance));
+        const { balances } = await client.core.listBalances({ owner });
+        const sui = balances.find(
+          (b) => /^0x0*2::sui::SUI$/i.test(b.coinType) || b.coinType === "SUI"
+        );
+        const usdc = balances.find((b) => /usdc/i.test(b.coinType));
+        if (!cancelled) {
+          if (sui) setBalance(BigInt(sui.balance));
+          setUsdcBalance(usdc ? BigInt(usdc.balance) : 0n);
+        }
       } catch {
-        // non-fatal; the display just stays as it was
+        try {
+          const { balance: b } = await client.core.getBalance({ owner });
+          if (!cancelled) setBalance(BigInt(b.balance));
+        } catch {}
       }
     })();
     return () => {
@@ -310,7 +331,7 @@ export default function LightTransactionLab() {
       return;
     }
     if (isTransfer && !isAmountValid) {
-      setBuildError("Enter a SUI amount greater than 0.");
+      setBuildError(`Enter a ${transferToken} amount greater than 0.`);
       return;
     }
 
@@ -327,7 +348,10 @@ export default function LightTransactionLab() {
         : account.address;
       const amount = Number(transferAmount) > 0 ? Number(transferAmount) : 0.05;
       payload = await scenario
-        .build(account.address, recipient, amount, { sponsored: sponsoredRun })
+        .build(account.address, recipient, amount, {
+          sponsored: sponsoredRun,
+          token: transferToken,
+        })
         .toJSON({ client });
     } catch (e) {
       setBuildError(e instanceof Error ? e.message : "Could not build the transaction.");
@@ -343,6 +367,7 @@ export default function LightTransactionLab() {
       sender: account.address,
       network,
       label: scenario.label,
+      token: isTransfer ? transferToken : undefined,
     });
 
     if (result.status === "not_installed") {
@@ -456,10 +481,21 @@ export default function LightTransactionLab() {
 
             <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
               <p className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
-                Balance
+                SUI Balance
               </p>
               <p className="font-mono text-base font-bold text-slate-900">
                 {balance === null ? "…" : `${formatSui(balance)} SUI`}
+              </p>
+            </div>
+
+            <div className="mt-2.5 flex items-center justify-between gap-3">
+              <p className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">
+                USDC Balance
+              </p>
+              <p className="font-mono text-base font-bold text-slate-900">
+                {usdcBalance === null
+                  ? "…"
+                  : `${(Number(usdcBalance) / 1_000_000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} USDC`}
               </p>
             </div>
 
@@ -486,6 +522,21 @@ export default function LightTransactionLab() {
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            {/* ── MUBA Hackathon Track Banner ── */}
+            <div className="mb-5 rounded-xl border border-indigo-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-sky-50 p-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-white">
+                  <span>🛡️</span> MUBA Track: Stablecoins & DeFi
+                </span>
+                <span className="rounded border border-indigo-200 bg-white/90 px-2 py-0.5 font-mono text-[10px] font-bold text-indigo-700">
+                  Sui Testnet
+                </span>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-slate-700">
+                Pre-execution security oracle for the Sui stablecoin ecosystem: Simulating and risk-scoring gasless USDC payments, Cetus DEX swaps, and Bucket Protocol ($BUCK) CDP operations before user signature.
+              </p>
+            </div>
+
             <span className="mb-4 inline-block rounded-full bg-blue-50 px-3 py-1 font-mono text-xs font-bold uppercase tracking-wider text-blue-700">
               Step 2 — Choose a Scenario
             </span>
@@ -514,8 +565,15 @@ export default function LightTransactionLab() {
                         : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                     }`}
                   >
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="text-base font-bold text-slate-900">{s.label}</span>
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-slate-900">{s.label}</span>
+                        {s.track && (
+                          <span className="hidden rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-600 sm:inline-block">
+                            {s.track}
+                          </span>
+                        )}
+                      </div>
                       <span
                         className={`rounded border px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider ${badge}`}
                       >
@@ -572,26 +630,79 @@ export default function LightTransactionLab() {
                   </div>
                 </div>
 
+                {/* ── Asset Selection (SUI vs Stablecoin) ── */}
+                <div className="space-y-2 border-t border-blue-200/60 pt-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-mono text-xs font-bold uppercase tracking-wider text-blue-900">
+                      🪙 Select Asset
+                    </label>
+                    <span className="font-mono text-[11px] font-semibold text-blue-700">
+                      {transferToken === "USDC" ? "Fiat-Pegged Stablecoin" : "Native Gas Asset"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTransferToken("SUI");
+                        setTransferAmount("0.05");
+                      }}
+                      className={`rounded-lg border px-3 py-2 text-left font-mono text-xs font-bold transition-all ${
+                        transferToken === "SUI"
+                          ? "border-blue-600 bg-blue-600 text-white shadow"
+                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>💧 SUI</span>
+                        <span className="text-[10px] opacity-80">Native Gas</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTransferToken("USDC");
+                        setTransferAmount("25");
+                      }}
+                      className={`rounded-lg border px-3 py-2 text-left font-mono text-xs font-bold transition-all ${
+                        transferToken === "USDC"
+                          ? "border-blue-600 bg-blue-600 text-white shadow"
+                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>💵 USDC</span>
+                        <span className="text-[10px] opacity-80">Stablecoin</span>
+                      </div>
+                    </button>
+                  </div>
+                  {transferToken === "USDC" && (
+                    <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 font-mono text-[11px] font-semibold text-emerald-800">
+                      ✓ Circle Testnet USDC · 100% Gasless via Enoki sponsorship
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-2 border-t border-blue-200/60 pt-2">
                   <div className="flex items-center justify-between">
                     <label
                       htmlFor="aegis-amount"
                       className="font-mono text-xs font-bold uppercase tracking-wider text-blue-900"
                     >
-                      💰 Transfer Amount (SUI)
+                      💰 Transfer Amount ({transferToken})
                     </label>
                     <span className="font-mono text-[11px] font-semibold text-blue-700">
-                      (Custom SUI amount)
+                      ({transferToken === "USDC" ? "Fiat-pegged stablecoin" : "Custom SUI amount"})
                     </span>
                   </div>
                   <input
                     id="aegis-amount"
                     type="number"
-                    step="0.01"
+                    step={transferToken === "USDC" ? "1" : "0.01"}
                     min="0.001"
                     value={transferAmount}
                     onChange={(e) => setTransferAmount(e.target.value)}
-                    placeholder="e.g. 0.05"
+                    placeholder={transferToken === "USDC" ? "e.g. 25" : "e.g. 0.05"}
                     className={`w-full rounded-lg border bg-white px-3.5 py-2.5 font-mono text-xs text-slate-900 outline-none focus:ring-2 ${
                       isAmountValid
                         ? "border-slate-300 focus:ring-blue-500"
@@ -599,14 +710,17 @@ export default function LightTransactionLab() {
                     }`}
                   />
                   <div className="flex gap-2 pt-0.5">
-                    {["0.05", "0.5", "1", "50"].map((amt) => (
+                    {(transferToken === "USDC"
+                      ? ["5", "25", "50", "100"]
+                      : ["0.05", "0.5", "1", "50"]
+                    ).map((amt) => (
                       <button
                         key={amt}
                         type="button"
                         onClick={() => setTransferAmount(amt)}
                         className="rounded border border-slate-300 bg-white px-2.5 py-1 font-mono text-[11px] font-bold text-slate-700 hover:bg-slate-100"
                       >
-                        {amt} SUI
+                        {amt} {transferToken}
                       </button>
                     ))}
                   </div>

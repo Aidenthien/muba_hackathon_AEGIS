@@ -79,6 +79,7 @@
         sender: params.sender,
         network: params.network || "testnet",
         label: params.label || null,
+        token: params.token || null,
       });
     },
 
